@@ -16,7 +16,15 @@ import {
   ShieldAlert,
   Clock,
   Check,
+  RotateCcw,
+  Bike,
+  Sparkles,
 } from "lucide-react";
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/card";
+import { Input } from "./ui/input";
+import { formatCurrency, formatPhone } from "../lib/utils";
 
 interface ConfigData {
   borzo: { env: string; baseUrl: string; tokenMasked: string; clientId: string };
@@ -42,10 +50,10 @@ export function CreateOrder({
   const [apartmentNumber, setApartmentNumber] = useState("");
   const [buildingNumber, setBuildingNumber] = useState("");
   const [floorNumber, setFloorNumber] = useState("");
-  const [dropNote, setDropNote] = useState("Please call upon arrival at the gate");
+  const [dropNote, setDropNote] = useState("");
 
   // Package & Order Details
-  const [matter, setMatter] = useState("Nepali Tales Food (Steamed Momos & Jhol Thukpa)");
+  const [matter, setMatter] = useState("Authentic Nepali Food (Hot Momos & Jhol Thukpa)");
   const [clientOrderId, setClientOrderId] = useState(`NT-${Math.floor(1000 + Math.random() * 9000)}`);
   const [weightKg, setWeightKg] = useState(1);
 
@@ -83,10 +91,11 @@ export function CreateOrder({
     return clean;
   };
 
-  // Step 1: Calculate Real Live Delivery Rate
-  const handleCalculate = async () => {
-    if (!dropAddress || !pickupAddress) {
-      setCalcError("Please enter both pickup and delivery address.");
+  // Calculate Real Live Delivery Rate
+  const handleCalculate = async (overrideAddress?: string) => {
+    const targetAddress = overrideAddress || dropAddress;
+    if (!targetAddress || !pickupAddress) {
+      setCalcError("Please enter a delivery destination address.");
       return;
     }
 
@@ -105,7 +114,7 @@ export function CreateOrder({
           contact_person: { phone: normalizePhone(pickupPhone), name: config?.kitchen?.name || "Nepali Tales Kitchen" },
         },
         {
-          address: dropAddress,
+          address: targetAddress,
           contact_person: { phone: normalizePhone(dropPhone) || "919820000001", name: dropName || "Recipient" },
         },
       ],
@@ -132,7 +141,7 @@ export function CreateOrder({
     }
   };
 
-  // Step 2: Book Borzo Delivery
+  // Book Borzo Delivery
   const handleBookDelivery = async () => {
     if (!dropAddress || !dropPhone || !dropName) {
       setBookingError("Please provide recipient Name, Phone number, and Delivery Address.");
@@ -141,7 +150,7 @@ export function CreateOrder({
 
     const isProd = config?.borzo?.env === "production";
     const confirmPrompt = isProd
-      ? `Confirm Borzo Delivery Booking:\n\n• Recipient: ${dropName} (${dropPhone})\n• Address: ${dropAddress}\n• Estimated Fare: ₹${calcResult?.payment_amount || "Calculating..."}\n\nThis will summon a REAL courier from Borzo in Mumbai/Thane. Proceed?`
+      ? `Confirm Delivery Booking:\n\n• Recipient: ${dropName} (${dropPhone})\n• Address: ${dropAddress}\n• Estimated Cost: ₹${calcResult?.payment_amount || "Calculating..."}\n\nThis will book a REAL Borzo bike courier. Proceed?`
       : `Book test delivery to ${dropName}?`;
 
     if (!confirm(confirmPrompt)) return;
@@ -212,6 +221,20 @@ export function CreateOrder({
     }
   };
 
+  const handleReset = () => {
+    setCreatedOrder(null);
+    setCalcResult(null);
+    setBookingError(null);
+    setCalcError(null);
+    setDropName("");
+    setDropPhone("");
+    setDropAddress("");
+    setApartmentNumber("");
+    setBuildingNumber("");
+    setFloorNumber("");
+    setDropNote("");
+  };
+
   const trackingUrl =
     createdOrder?.points?.[1]?.tracking_url ||
     createdOrder?.points?.[0]?.tracking_url ||
@@ -231,496 +254,455 @@ export function CreateOrder({
   };
 
   const getWhatsAppMessage = () => {
-    return `Namaste ${dropName || "there"}! 🥟 Your authentic Nepali food order from Nepali Tales is freshly prepared and out for delivery with Borzo courier. 🛵\n\nTrack your courier live here:\n${trackingUrl || ""}\n\nEnjoy the meal!`;
+    return `Namaste ${dropName || "there"}! 🥟 Your authentic Nepali food order from Nepali Tales is freshly prepared and out for delivery with Borzo courier. 🛵\n\nTrack your courier live here:\n${trackingUrl || ""}\n\nEnjoy your meal!`;
   };
 
   const isProduction = config?.borzo?.env === "production";
+  const distanceKm = calcResult?.points?.[1]?.previous_point_driving_distance_meters
+    ? (calcResult.points[1].previous_point_driving_distance_meters / 1000).toFixed(1)
+    : null;
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+      {/* Title bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-4">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Send className="w-5 h-5 text-emerald-400" />
-            Book Borzo Delivery Service
+          <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+            Dispatch Delivery Order
+            <Badge variant="outline" className="text-zinc-400 font-mono text-[10px]">
+              Motorbike &middot; up to 20kg
+            </Badge>
           </h2>
-          <p className="text-sm text-slate-400">
-            Dispatch food orders to friends, family, or customers with real-time rate calculation, route distance, and live courier tracking.
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Send food packages to friends, family, or customers with automated pricing, address geocoding, and live tracking.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleCalculate}
-            disabled={calcLoading || !dropAddress}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 text-xs font-semibold cursor-pointer transition-colors disabled:opacity-50"
-          >
-            {calcLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Calculator className="w-3.5 h-3.5" />}
-            1. Calculate Fare
-          </button>
-          <button
-            type="button"
-            onClick={handleBookDelivery}
-            disabled={bookingLoading || !dropAddress || !dropPhone || !dropName}
-            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-white font-semibold text-xs shadow-lg transition-all cursor-pointer disabled:opacity-50 ${
-              isProduction
-                ? "bg-rose-600 hover:bg-rose-500 shadow-rose-600/20"
-                : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20"
-            }`}
-          >
-            {bookingLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-            {isProduction ? "2. Book Real Courier Now" : "2. Book Test Courier"}
-          </button>
-        </div>
+
+        {createdOrder && (
+          <Button variant="outline" size="sm" onClick={handleReset} className="h-8 gap-1.5 text-xs">
+            <RotateCcw className="h-3.5 w-3.5" />
+            Book Another Delivery
+          </Button>
+        )}
       </div>
 
-      {/* Success Booking Banner */}
+      {/* Success Booking Card */}
       {createdOrder && (
-        <div className="bg-gradient-to-r from-emerald-950/80 via-slate-900 to-emerald-950/80 border-2 border-emerald-500/80 rounded-2xl p-6 shadow-2xl space-y-4 animate-in fade-in duration-300">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-500/30 pb-3">
+        <Card className="border-emerald-500/40 bg-gradient-to-br from-emerald-950/40 via-zinc-900/90 to-zinc-950 p-6 space-y-5 animate-in fade-in duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-                <CheckCircle2 className="w-6 h-6" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                <CheckCircle2 className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">Borzo Delivery Booked Successfully!</h3>
-                <p className="text-xs text-emerald-300">
-                  Courier dispatch request has been broadcasted on Borzo network.
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-white">Borzo Delivery Order Dispatched!</h3>
+                  <Badge variant="success">Confirmed</Badge>
+                </div>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Courier request has been broadcasted to available drivers near Kasarvadavali.
                 </p>
               </div>
             </div>
+
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400">Order ID:</span>
-              <span className="font-mono text-base font-black text-white px-3 py-1 rounded-lg bg-emerald-950 border border-emerald-500/40">
-                #{createdOrder.order_id}
-              </span>
-              {createdOrder.order_name && (
-                <span className="text-xs text-emerald-300 font-mono">
-                  (Short: {createdOrder.order_name})
-                </span>
-              )}
+              <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 font-mono text-xs">
+                <span className="text-zinc-500 mr-1.5">Order ID:</span>
+                <span className="font-bold text-white">#{createdOrder.order_id}</span>
+                {createdOrder.order_name && (
+                  <span className="text-emerald-400 ml-1.5">({createdOrder.order_name})</span>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div className="bg-slate-950/60 rounded-xl p-3 border border-slate-800">
-              <span className="text-slate-400 block mb-1">Status</span>
-              <span className="text-emerald-400 font-semibold text-sm capitalize">
-                {createdOrder.status || "available"}
-              </span>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                {createdOrder.status_description || "Awaiting courier assignment"}
-              </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/60 p-3 space-y-1">
+              <span className="text-[11px] text-zinc-400 block font-medium">Recipient</span>
+              <span className="text-xs font-semibold text-white block truncate">{dropName}</span>
+              <span className="text-[11px] font-mono text-zinc-400 block">{formatPhone(dropPhone)}</span>
             </div>
-            <div className="bg-slate-950/60 rounded-xl p-3 border border-slate-800">
-              <span className="text-slate-400 block mb-1">Delivery Fee</span>
-              <span className="text-white font-bold text-base font-mono">
-                ₹{createdOrder.payment_amount || "0.00"}
+
+            <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/60 p-3 space-y-1">
+              <span className="text-[11px] text-zinc-400 block font-medium">Delivery Fare</span>
+              <span className="text-base font-bold text-emerald-400 font-mono block">
+                {formatCurrency(createdOrder.payment_amount)}
               </span>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                Payment Method: {createdOrder.payment_method || "cash"}
-              </p>
+              <span className="text-[11px] text-zinc-500 block">Payment: {createdOrder.payment_method || "cash"}</span>
             </div>
-            <div className="bg-slate-950/60 rounded-xl p-3 border border-slate-800">
-              <span className="text-slate-400 block mb-1">Recipient</span>
-              <span className="text-white font-semibold">{dropName}</span>
-              <p className="text-[11px] text-slate-400 mt-0.5 font-mono">{dropPhone}</p>
+
+            <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/60 p-3 space-y-1">
+              <span className="text-[11px] text-zinc-400 block font-medium">Courier Status</span>
+              <span className="text-xs font-semibold text-white capitalize block">
+                {createdOrder.status || "Searching Courier"}
+              </span>
+              <span className="text-[11px] text-zinc-400 block truncate">
+                {createdOrder.status_description || "Awaiting courier acceptance"}
+              </span>
             </div>
           </div>
 
-          {/* WhatsApp Sharing Card */}
+          {/* WhatsApp Share Card */}
           {trackingUrl && (
-            <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-1">
-                <div className="flex items-center gap-2 text-emerald-300 font-semibold text-xs">
-                  <Share2 className="w-4 h-4 text-emerald-400" />
+                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-300">
+                  <Share2 className="h-3.5 w-3.5 text-emerald-400" />
                   Live Customer Tracking Link
                 </div>
-                <p className="font-mono text-xs text-white truncate max-w-xl">
+                <p className="font-mono text-xs text-zinc-200 truncate max-w-xl">
                   {trackingUrl}
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <a
-                  href={trackingUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium flex items-center gap-1.5 cursor-pointer"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  Open Tracker
+
+              <div className="flex items-center gap-2 shrink-0">
+                <a href={trackingUrl} target="_blank" rel="noreferrer">
+                  <Button variant="secondary" size="sm" className="h-8 gap-1.5 text-[11px]">
+                    <ExternalLink className="h-3 w-3" />
+                    Open Tracker
+                  </Button>
                 </a>
-                <button
-                  type="button"
+                <Button
+                  variant="success"
+                  size="sm"
                   onClick={() => copyToClipboard(getWhatsAppMessage(), "wa")}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/40 text-xs font-medium flex items-center gap-1.5 cursor-pointer"
+                  className="h-8 gap-1.5 text-[11px]"
                 >
-                  {copiedWhatsApp ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedWhatsApp ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                   {copiedWhatsApp ? "Copied Message!" : "Copy WhatsApp Message"}
-                </button>
+                </Button>
               </div>
             </div>
           )}
-        </div>
+        </Card>
       )}
 
-      {/* Errors */}
+      {/* Error Banners */}
       {bookingError && (
-        <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 text-rose-300 text-xs flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+        <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-300 flex items-start gap-3">
+          <AlertCircle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <strong className="font-semibold block">Booking Failed:</strong>
+            <span className="font-semibold block">Booking Failed:</span>
             <pre className="font-mono text-[11px] whitespace-pre-wrap">{bookingError}</pre>
           </div>
         </div>
       )}
 
       {calcError && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-amber-300 text-xs flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <span className="font-semibold">Calculation Notice:</span>
-            <pre className="font-mono text-[11px] whitespace-pre-wrap">{calcError}</pre>
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-300 flex items-start gap-2">
+          <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <span className="font-medium">Calculation Notice:</span>
+            <p className="text-[11px] text-amber-300/90">{calcError}</p>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Form Fields */}
+      {/* 2-Column Workflow */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Form Details */}
         <div className="lg:col-span-7 space-y-5">
-          {/* Quick Destination Presets */}
-          {config?.sampleDestinations && (
-            <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">
-                Quick Test Delivery Locations (Thane / Mumbai)
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {config.sampleDestinations.map((preset, idx) => (
+          {/* Destination Form Card */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Delivery Destination</CardTitle>
+                  <CardDescription>Enter recipient contact and address details.</CardDescription>
+                </div>
+                <Badge variant="outline" className="text-zinc-400">Step 1</Badge>
+              </div>
+
+              {/* Destination Presets */}
+              {config?.sampleDestinations && (
+                <div className="pt-2">
+                  <span className="text-[11px] font-medium text-zinc-400 block mb-1.5">Quick Presets:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {config.sampleDestinations.map((preset, idx) => {
+                      const isActive = dropAddress === preset.address;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setDropAddress(preset.address);
+                            setDropPhone(preset.phone);
+                            setDropName(preset.name);
+                            handleCalculate(preset.address);
+                          }}
+                          className={`rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer ${
+                            isActive
+                              ? "border-rose-500/60 bg-rose-500/10 text-rose-300"
+                              : "border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-zinc-300">
+                    Recipient Full Name <span className="text-rose-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <User className="h-3.5 w-3.5 absolute left-3 top-2.5 text-zinc-500" />
+                    <Input
+                      placeholder="e.g. Diwash Pradhan"
+                      value={dropName}
+                      onChange={(e) => setDropName(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-zinc-300">
+                    Phone Number <span className="text-rose-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <Phone className="h-3.5 w-3.5 absolute left-3 top-2.5 text-zinc-500" />
+                    <Input
+                      placeholder="e.g. 9820000001 or 919820000001"
+                      value={dropPhone}
+                      onChange={(e) => setDropPhone(e.target.value)}
+                      className="pl-8 font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-medium text-zinc-300">
+                    Street Delivery Address <span className="text-rose-400">*</span>
+                  </label>
                   <button
-                    key={idx}
                     type="button"
-                    onClick={() => {
-                      setDropAddress(preset.address);
-                      setDropPhone(preset.phone);
-                      setDropName(preset.name);
-                      setCalcResult(null);
-                    }}
-                    className={`text-xs px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${
-                      dropAddress === preset.address
-                        ? "bg-emerald-600/20 border-emerald-500/80 text-emerald-300 font-medium"
-                        : "bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white"
-                    }`}
+                    onClick={() => handleCalculate()}
+                    className="text-[11px] text-rose-400 hover:text-rose-300 font-medium cursor-pointer"
                   >
-                    {preset.label}
+                    Calculate Rate
                   </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Point 1: Nepali Tales Kitchen (Pickup) */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                Point 1: Pickup (Nepali Tales Kitchen)
-              </div>
-              <span className="text-[11px] text-slate-500">Auto-configured</span>
-            </div>
-            <div>
-              <label className="block text-[11px] font-medium text-slate-400 mb-1">Pickup Address</label>
-              <div className="relative">
-                <MapPin className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
-                <textarea
-                  rows={2}
-                  value={pickupAddress}
-                  onChange={(e) => setPickupAddress(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-medium text-slate-400 mb-1">Kitchen Contact Phone</label>
+                </div>
                 <div className="relative">
-                  <Phone className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
-                  <input
-                    type="text"
-                    value={pickupPhone}
-                    onChange={(e) => setPickupPhone(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
+                  <MapPin className="h-3.5 w-3.5 absolute left-3 top-3 text-zinc-500" />
+                  <textarea
+                    rows={2}
+                    placeholder="Apartment/Society name, street, area, Thane West, Maharashtra"
+                    value={dropAddress}
+                    onChange={(e) => setDropAddress(e.target.value)}
+                    onBlur={() => {
+                      if (dropAddress) handleCalculate();
+                    }}
+                    className="w-full rounded-lg border border-zinc-800 bg-zinc-950/80 pl-8 pr-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400"
+                  />
+                </div>
+                <p className="text-[11px] text-zinc-500">
+                  Google Maps will geocode this address to locate your courier on the road.
+                </p>
+              </div>
+
+              {/* Apartment / Flat / Floor */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-zinc-400">Flat / Apt #</label>
+                  <Input
+                    placeholder="e.g. 405"
+                    value={apartmentNumber}
+                    onChange={(e) => setApartmentNumber(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-zinc-400">Wing / Bldg</label>
+                  <Input
+                    placeholder="e.g. Wing B"
+                    value={buildingNumber}
+                    onChange={(e) => setBuildingNumber(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-zinc-400">Floor #</label>
+                  <Input
+                    placeholder="e.g. 4th"
+                    value={floorNumber}
+                    onChange={(e) => setFloorNumber(e.target.value)}
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-[11px] font-medium text-slate-400 mb-1">Sender Name</label>
-                <div className="relative">
-                  <User className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
-                  <input
-                    type="text"
-                    value={config?.kitchen?.name || "Nepali Tales Kitchen"}
-                    readOnly
-                    className="w-full pl-9 pr-3 py-2 bg-slate-950/60 border border-slate-800 rounded-lg text-xs text-slate-300 font-medium cursor-not-allowed"
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-zinc-400">Instructions for Driver</label>
+                <Input
+                  placeholder="e.g. Please ring doorbell / Leave at security gate if busy"
+                  value={dropNote}
+                  onChange={(e) => setDropNote(e.target.value)}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Package Items Card */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Food Items & Package</CardTitle>
+                  <CardDescription>Contents displayed to the courier.</CardDescription>
+                </div>
+                <Badge variant="outline" className="text-zinc-400">Step 2</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2 space-y-1">
+                  <label className="text-[11px] font-medium text-zinc-300">Items Description</label>
+                  <Input
+                    value={matter}
+                    onChange={(e) => setMatter(e.target.value)}
+                    placeholder="e.g. Nepali Tales Food (Hot Momos & Noodles)"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-zinc-300">Total Weight (kg)</label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={weightKg}
+                    onChange={(e) => setWeightKg(Number(e.target.value))}
                   />
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Point 2: Recipient Information (Drop) */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-semibold text-rose-400 uppercase tracking-wider">
-                <span className="w-2 h-2 rounded-full bg-rose-400"></span>
-                Point 2: Delivery Destination (Friend / Customer)
-              </div>
-              <span className="text-[11px] text-rose-400 font-medium">Required</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-medium text-slate-400 mb-1">
-                  Recipient Full Name <span className="text-rose-400">*</span>
-                </label>
-                <div className="relative">
-                  <User className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
-                  <input
-                    type="text"
-                    value={dropName}
-                    onChange={(e) => setDropName(e.target.value)}
-                    placeholder="e.g. Diwash Pradhan"
-                    className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-rose-500"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-[11px] font-medium text-slate-400 mb-1">
-                  Recipient Phone Number <span className="text-rose-400">*</span>
-                </label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
-                  <input
-                    type="text"
-                    value={dropPhone}
-                    onChange={(e) => setDropPhone(e.target.value)}
-                    placeholder="e.g. 9820000001 or 919820000001"
-                    className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-rose-500 font-mono"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-medium text-slate-400 mb-1">
-                Full Street Delivery Address <span className="text-rose-400">*</span>
-              </label>
-              <div className="relative">
-                <MapPin className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
-                <textarea
-                  rows={2}
-                  value={dropAddress}
-                  onChange={(e) => {
-                    setDropAddress(e.target.value);
-                    setCalcResult(null);
-                  }}
-                  placeholder="Street, area, building name, Thane/Mumbai, Maharashtra"
-                  className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-rose-500"
-                />
-              </div>
-              <p className="text-[11px] text-slate-500 mt-1">
-                Borzo uses Google Maps to locate the exact delivery coordinates.
-              </p>
-            </div>
-
-            {/* Optional Flat & Building Details */}
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="block text-[11px] font-medium text-slate-400 mb-1">Flat / Apt #</label>
-                <input
-                  type="text"
-                  value={apartmentNumber}
-                  onChange={(e) => setApartmentNumber(e.target.value)}
-                  placeholder="e.g. 405"
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-medium text-slate-400 mb-1">Wing / Bldg</label>
-                <input
-                  type="text"
-                  value={buildingNumber}
-                  onChange={(e) => setBuildingNumber(e.target.value)}
-                  placeholder="e.g. Wing A"
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-medium text-slate-400 mb-1">Floor #</label>
-                <input
-                  type="text"
-                  value={floorNumber}
-                  onChange={(e) => setFloorNumber(e.target.value)}
-                  placeholder="e.g. 4"
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-medium text-slate-400 mb-1">Instructions for Courier</label>
-              <input
-                type="text"
-                value={dropNote}
-                onChange={(e) => setDropNote(e.target.value)}
-                placeholder="e.g. Leave with security / Call upon arrival"
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-          </div>
-
-          {/* Food Order Contents */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-300 uppercase tracking-wider">
-              <Package className="w-4 h-4 text-amber-400" />
-              Package & Delivery Contents
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="sm:col-span-2">
-                <label className="block text-[11px] font-medium text-slate-400 mb-1">Items Description</label>
-                <input
-                  type="text"
-                  value={matter}
-                  onChange={(e) => setMatter(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-medium text-slate-400 mb-1">Est. Weight (kg)</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="20"
-                  value={weightKg}
-                  onChange={(e) => setWeightKg(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Right Column: Live Fare Preview & Booking Summary */}
-        <div className="lg:col-span-5 space-y-5">
-          {/* Live Fare Card */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 sticky top-24 shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Calculator className="w-4 h-4 text-indigo-400" />
-                Live Delivery Rate Preview
-              </h3>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
-                Borzo v1.8
-              </span>
-            </div>
-
-            {calcResult ? (
-              <div className="space-y-4">
-                {/* Big Price Display */}
-                <div className="bg-gradient-to-tr from-slate-950 to-indigo-950/40 p-4 rounded-xl border border-indigo-500/30 text-center">
-                  <span className="text-xs text-slate-400 block mb-1">Estimated Courier Charge</span>
-                  <div className="text-3xl font-black text-white font-mono tracking-tight flex items-center justify-center gap-1">
-                    <span className="text-xl text-emerald-400">₹</span>
-                    {calcResult.payment_amount || "0.00"}
-                  </div>
-                  <span className="text-[11px] text-emerald-300 mt-1 inline-block">
-                    {isProduction ? "Live Borzo Mumbai/Thane Rate" : "Test Estimate"}
-                  </span>
-                </div>
-
-                {/* Breakdown metrics */}
-                <div className="space-y-2 text-xs divide-y divide-slate-800/80">
-                  <div className="flex justify-between py-1.5 text-slate-300">
-                    <span className="text-slate-400">Estimated Road Distance</span>
-                    <span className="font-mono font-semibold text-white">
-                      {calcResult.points?.[1]?.previous_point_driving_distance_meters
-                        ? `${(calcResult.points[1].previous_point_driving_distance_meters / 1000).toFixed(2)} km`
-                        : "Calculated by Borzo"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-1.5 text-slate-300">
-                    <span className="text-slate-400">Vehicle Type</span>
-                    <span className="text-white">Motorbike (up to 20kg)</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 text-slate-300">
-                    <span className="text-slate-400">Courier Arrival Window</span>
-                    <span className="font-mono text-emerald-400 font-medium">
-                      {calcResult.points?.[0]?.required_finish_datetime
-                        ? new Date(calcResult.points[0].required_finish_datetime).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : "Within 30-45 mins"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-1.5 text-slate-300">
-                    <span className="text-slate-400">Payment Method</span>
-                    <span className="text-white font-mono uppercase">
-                      {calcResult.payment_method || "cash"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Primary Action Button */}
-                <button
-                  type="button"
-                  onClick={handleBookDelivery}
-                  disabled={bookingLoading}
-                  className={`w-full py-3 px-4 rounded-xl font-bold text-sm shadow-xl flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                    isProduction
-                      ? "bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/30"
-                      : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30"
-                  }`}
-                >
-                  {bookingLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Send className="w-4 h-4" />
-                  )}
-                  {isProduction ? `Confirm & Book Courier (₹${calcResult.payment_amount})` : "Confirm & Book Test Courier"}
-                </button>
+        {/* Right Column: Live Rate & Book Courier Card */}
+        <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-24">
+          <Card className="border-zinc-800 bg-zinc-900/90 shadow-xl overflow-hidden">
+            <CardHeader className="border-b border-zinc-800/80 pb-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                  <Bike className="h-4 w-4 text-rose-500" />
+                  Live Fare Quote
+                </CardTitle>
+                <Badge variant={isProduction ? "destructive" : "warning"}>
+                  {isProduction ? "Live Borzo Rates" : "Test Estimate"}
+                </Badge>
               </div>
-            ) : (
-              <div className="text-center py-8 px-4 border border-dashed border-slate-800 rounded-xl space-y-3">
-                <Navigation className="w-8 h-8 text-slate-600 mx-auto" />
-                <p className="text-xs text-slate-400">
-                  Enter recipient address and click <strong>"1. Calculate Fare"</strong> to get real-time Borzo pricing and distance.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleCalculate}
-                  disabled={calcLoading || !dropAddress}
-                  className="px-4 py-2 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold cursor-pointer disabled:opacity-40"
-                >
-                  {calcLoading ? "Calculating..." : "Calculate Price Now"}
-                </button>
-              </div>
-            )}
+            </CardHeader>
 
-            {/* Safety Reminder */}
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
-              <span className="text-slate-300 font-semibold block flex items-center gap-1.5">
-                <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-                Founder Note for Live Testing:
-              </span>
-              <p>
-                In <strong>Live Production</strong> mode, Borzo assigns a real delivery partner on Ghodbunder Road / Thane. You can cancel orders anytime within the <strong>Orders Tracker</strong> tab before the courier arrives.
-              </p>
-            </div>
+            <CardContent className="p-5 space-y-5">
+              {calcLoading ? (
+                <div className="py-10 text-center space-y-2">
+                  <Loader2 className="h-6 w-6 animate-spin text-rose-500 mx-auto" />
+                  <p className="text-xs text-zinc-400">Contacting Borzo pricing engine...</p>
+                </div>
+              ) : calcResult ? (
+                <div className="space-y-4">
+                  {/* Large Price Block */}
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4 text-center">
+                    <span className="text-[11px] text-zinc-400 block mb-1">Total Delivery Fee</span>
+                    <div className="text-3xl font-black text-white font-mono tracking-tight tabular-nums">
+                      {formatCurrency(calcResult.payment_amount)}
+                    </div>
+                    <div className="flex items-center justify-center gap-2 mt-2">
+                      {distanceKm && (
+                        <Badge variant="secondary" className="font-mono text-[10px]">
+                          {distanceKm} km route
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="text-[10px]">
+                        Motorbike
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Key Metrics */}
+                  <div className="space-y-2 text-xs divide-y divide-zinc-800/80 pt-1">
+                    <div className="flex justify-between py-1.5 text-zinc-300">
+                      <span className="text-zinc-400">Base Delivery Charge</span>
+                      <span className="font-mono font-medium text-white">
+                        {formatCurrency(calcResult.delivery_fee_amount || calcResult.payment_amount)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-1.5 text-zinc-300">
+                      <span className="text-zinc-400">Courier Arrival Window</span>
+                      <span className="font-mono text-emerald-400 font-medium">
+                        {calcResult.points?.[0]?.required_finish_datetime
+                          ? new Date(calcResult.points[0].required_finish_datetime).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "Within 30–45 mins"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-1.5 text-zinc-300">
+                      <span className="text-zinc-400">Payment Channel</span>
+                      <span className="text-white capitalize font-mono">
+                        {calcResult.payment_method || "Cash to courier"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Primary Dispatch Action */}
+                  <Button
+                    variant={isProduction ? "primary" : "default"}
+                    size="lg"
+                    onClick={handleBookDelivery}
+                    disabled={bookingLoading}
+                    className="w-full h-11 text-xs font-bold gap-2"
+                  >
+                    {bookingLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                    {isProduction
+                      ? `Book Borzo Courier (${formatCurrency(calcResult.payment_amount)})`
+                      : "Book Test Courier"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="py-8 text-center space-y-3">
+                  <Navigation className="h-8 w-8 text-zinc-600 mx-auto" />
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-zinc-300">No destination quoted yet</p>
+                    <p className="text-[11px] text-zinc-500 max-w-xs mx-auto">
+                      Fill in recipient address on the left and click below to view live Borzo rates.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCalculate()}
+                    disabled={calcLoading || !dropAddress}
+                    className="gap-1.5 text-xs"
+                  >
+                    <Calculator className="h-3.5 w-3.5" />
+                    Calculate Rate
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Quick Notice */}
+          <div className="rounded-lg border border-zinc-800/80 bg-zinc-950 p-3.5 text-[11px] text-zinc-400 space-y-1">
+            <span className="font-semibold text-zinc-300 block flex items-center gap-1.5">
+              <ShieldAlert className="h-3.5 w-3.5 text-rose-400" />
+              Live Courier Note:
+            </span>
+            <p className="leading-relaxed">
+              When you click <strong>Book Courier</strong> in Live Production mode, Borzo summons a motorbike courier to Nepali Tales Kitchen in Kasarvadavali. You can monitor courier arrival live or cancel anytime from the <strong>Deliveries History</strong> tab.
+            </p>
           </div>
         </div>
       </div>

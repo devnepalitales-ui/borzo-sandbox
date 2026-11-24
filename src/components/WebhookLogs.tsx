@@ -12,7 +12,12 @@ import {
   ExternalLink,
   Info,
   Clock,
+  Radio,
 } from "lucide-react";
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/card";
+import { formatPhone } from "../lib/utils";
 
 export function WebhookLogs() {
   const [events, setEvents] = useState<any[]>([]);
@@ -96,179 +101,152 @@ export function WebhookLogs() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+      {/* Title */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-4">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Bell className="w-5 h-5 text-amber-400" />
-            Borzo Webhook Receiver & Callback Guide
+          <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+            Webhook & Status Callback Monitor
           </h2>
-          <p className="text-sm text-slate-400">
-            Real-time status callback endpoint for Borzo status updates (Courier assigned, Arrived, Delivered, Canceled).
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Real-time webhook listener receiving automated courier updates from Borzo.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleSimulate}
             disabled={simulating}
-            className="px-3 py-2 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold cursor-pointer transition-colors"
+            className="h-8 text-xs font-semibold gap-1.5"
           >
-            {simulating ? "Simulating..." : "Simulate Callback"}
-          </button>
-          <button
-            type="button"
+            {simulating ? "Simulating..." : "Simulate Event"}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={fetchLogs}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition-colors cursor-pointer"
+            className="h-8 text-xs font-semibold gap-1.5"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
             Refresh
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleClear}
             disabled={events.length === 0}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-rose-600/10 hover:bg-rose-600/20 text-rose-300 text-xs font-medium border border-rose-500/20 transition-colors disabled:opacity-40 cursor-pointer"
+            className="h-8 text-xs text-zinc-400 hover:text-rose-400"
           >
-            <Trash2 className="w-3.5 h-3.5" />
-            Clear
-          </button>
+            <Trash2 className="h-3 w-3" />
+          </Button>
         </div>
       </div>
 
-      {/* Guide Banner for Borzo Cabinet */}
-      <div className="bg-gradient-to-br from-slate-900 to-indigo-950/40 border border-indigo-500/30 rounded-2xl p-6 shadow-xl space-y-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600/30 text-indigo-300 flex items-center justify-center font-bold">
-              <Terminal className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-white">What to Add in Borzo Integration Cabinet</h3>
-              <p className="text-xs text-slate-400">
-                Go to{" "}
-                <a
-                  href="https://borzodelivery.com/in/cabinet/integration"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-indigo-400 underline font-medium inline-flex items-center gap-1"
-                >
-                  borzodelivery.com/in/cabinet/integration
-                  <ExternalLink className="w-3 h-3" />
-                </a>{" "}
-                and fill in the two fields under <strong>"Callback URL for statuses receiving"</strong>:
-              </p>
-            </div>
+      {/* Integration Guide Box */}
+      <Card className="border-zinc-800 bg-zinc-900/60 p-5 space-y-4">
+        <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
+          <div className="flex items-center gap-2 text-xs font-bold text-white">
+            <Radio className="h-3.5 w-3.5 text-rose-400" />
+            Borzo Cabinet Callback Settings
           </div>
-          <span className="hidden sm:inline-block px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-            Subdomain: test.nepalitales.com
-          </span>
+          <a
+            href="https://borzodelivery.com/in/cabinet/integration"
+            target="_blank"
+            rel="noreferrer"
+            className="text-[11px] text-rose-400 hover:underline flex items-center gap-1 font-medium"
+          >
+            Open Integration Cabinet
+            <ExternalLink className="h-3 w-3" />
+          </a>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Field 1: Callback URL */}
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+          {/* Callback URL */}
+          <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3.5 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                1. Callback URL
-              </span>
+              <span className="text-xs font-semibold text-zinc-200">1. Callback URL</span>
               <button
                 type="button"
                 onClick={() => copyText(callbackUrl, "url")}
-                className="text-[11px] text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1 cursor-pointer"
+                className="text-[11px] text-rose-400 hover:text-rose-300 font-medium flex items-center gap-1 cursor-pointer"
               >
-                {copiedUrl ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                {copiedUrl ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
                 {copiedUrl ? "Copied!" : "Copy URL"}
               </button>
             </div>
-            <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 font-mono text-xs text-emerald-400 select-all break-all">
+            <div className="p-2 rounded bg-zinc-900 font-mono text-[11px] text-emerald-400 select-all break-all border border-zinc-800">
               {callbackUrl}
             </div>
-            <p className="text-[11px] text-slate-500">
-              Paste this exact URL into the <strong>Callback URL</strong> box in your Borzo cabinet. Borzo will send all order status change notifications via HTTP POST to this endpoint.
+            <p className="text-[11px] text-zinc-500">
+              Paste into the <strong>Callback URL</strong> box in your Borzo Cabinet.
             </p>
           </div>
 
-          {/* Field 2: Callback Token */}
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+          {/* Callback Token */}
+          <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3.5 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-indigo-400"></span>
-                2. Callback Token
-              </span>
+              <span className="text-xs font-semibold text-zinc-200">2. Callback Token</span>
               <button
                 type="button"
                 onClick={() => copyText(activeToken, "token")}
-                className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1 cursor-pointer"
+                className="text-[11px] text-rose-400 hover:text-rose-300 font-medium flex items-center gap-1 cursor-pointer"
               >
-                {copiedToken ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                {copiedToken ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
                 {copiedToken ? "Copied!" : "Copy Token"}
               </button>
             </div>
-            <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 font-mono text-xs text-indigo-300 select-all break-all">
+            <div className="p-2 rounded bg-zinc-900 font-mono text-[11px] text-zinc-200 select-all break-all border border-zinc-800">
               {activeToken}
             </div>
-            <p className="text-[11px] text-slate-500">
-              Enter any secret key here (or copy the one above). Borzo uses it to compute an HMAC-SHA256 signature in the <code className="text-slate-300">X-DV-Signature</code> header so our server can authenticate genuine callbacks.
+            <p className="text-[11px] text-zinc-500">
+              Verified token from your Borzo cabinet for cryptographic HMAC-SHA256 authentication.
             </p>
           </div>
         </div>
+      </Card>
 
-        <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 text-[11px] text-slate-400 flex items-start gap-2">
-          <Info className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-          <span>
-            <strong>How Borzo processes callbacks:</strong> Whenever an order updates (courier assigned, parcel picked up from Kasarvadavali kitchen, delivered, or canceled), Borzo calls your Callback URL. Our server automatically acknowledges with HTTP 200 <code className="text-slate-300">{"{\"is_successful\": true}"}</code> so Borzo knows it succeeded.
+      {/* Events List */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-zinc-300">
+            Received Events ({events.length})
           </span>
-        </div>
-      </div>
-
-      {/* Webhook Events Stream */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            <Bell className="w-4 h-4 text-amber-400" />
-            Live Webhook Event Stream ({events.length})
-          </h3>
-          <span className="text-xs text-slate-500 font-mono">Auto-refreshes every 5s</span>
+          <span className="text-[11px] text-zinc-500 font-mono">Auto-refreshes every 5s</span>
         </div>
 
         {events.length === 0 ? (
-          <div className="text-center py-12 text-slate-500 space-y-2">
-            <Clock className="w-8 h-8 text-slate-600 mx-auto" />
-            <p className="text-xs">No webhooks received yet.</p>
-            <p className="text-[11px] text-slate-600">
-              Place a delivery order or click <strong>"Simulate Callback"</strong> above to test event processing.
+          <div className="rounded-xl border border-dashed border-zinc-800 py-16 text-center space-y-2">
+            <Clock className="h-8 w-8 text-zinc-600 mx-auto" />
+            <p className="text-xs font-medium text-zinc-300">No webhook events received yet</p>
+            <p className="text-[11px] text-zinc-500">
+              Place a delivery order or click <strong>Simulate Event</strong> to test receipt.
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {events.map((evt, idx) => (
               <div
                 key={evt.id || idx}
-                className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2 font-mono text-xs"
+                className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3.5 space-y-2 font-mono text-xs"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] text-slate-400 border-b border-slate-800/60 pb-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800/60 pb-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-emerald-400 font-bold">
-                      {evt.body?.event_type || "POST /api/borzo/webhook"}
+                    <span className="text-rose-400 font-bold">
+                      {evt.body?.event_type || "order_status_changed"}
                     </span>
                     {evt.body?.order_id && (
-                      <span className="px-2 py-0.5 rounded bg-slate-800 text-white font-semibold">
-                        Order #{evt.body.order_id}
-                      </span>
+                      <Badge variant="secondary">Order #{evt.body.order_id}</Badge>
                     )}
                     {evt.body?.status && (
-                      <span className="px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/20 uppercase font-semibold">
-                        {evt.body.status}
-                      </span>
+                      <Badge variant="info">{evt.body.status}</Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
+
+                  <div className="flex items-center gap-2 text-[11px] text-zinc-400">
                     {evt.isSignatureValid === true && (
                       <span className="text-emerald-400 flex items-center gap-1 text-[10px]">
-                        <ShieldCheck className="w-3 h-3" /> Verified HMAC
+                        <ShieldCheck className="h-3 w-3" /> Verified HMAC
                       </span>
                     )}
                     <span>{new Date(evt.receivedAt).toLocaleTimeString()}</span>
@@ -276,25 +254,19 @@ export function WebhookLogs() {
                 </div>
 
                 {evt.body?.courier && (
-                  <div className="text-[11px] text-slate-300 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800/60 flex flex-wrap gap-4">
-                    <span>
-                      <strong>Courier:</strong> {evt.body.courier.name} {evt.body.courier.surname}
-                    </span>
-                    <span>
-                      <strong>Phone:</strong> {evt.body.courier.phone}
-                    </span>
+                  <div className="rounded-md border border-zinc-800 bg-zinc-950 p-2.5 text-[11px] text-zinc-300 flex flex-wrap gap-4">
+                    <span><strong>Courier:</strong> {evt.body.courier.name} {evt.body.courier.surname}</span>
+                    <span><strong>Phone:</strong> {formatPhone(evt.body.courier.phone)}</span>
                     {evt.body.courier.latitude && (
-                      <span>
-                        <strong>Coordinates:</strong> {evt.body.courier.latitude}, {evt.body.courier.longitude}
-                      </span>
+                      <span><strong>Coordinates:</strong> {evt.body.courier.latitude}, {evt.body.courier.longitude}</span>
                     )}
                   </div>
                 )}
 
-                <details className="text-[11px] text-slate-500 pt-1 cursor-pointer">
-                  <summary className="hover:text-slate-300">View Full JSON Payload & Headers</summary>
-                  <pre className="mt-2 p-3 bg-slate-900 rounded-lg text-slate-300 overflow-x-auto text-[10px] whitespace-pre-wrap">
-                    {JSON.stringify({ headers: evt.headers, body: evt.body }, null, 2)}
+                <details className="text-[11px] text-zinc-500 pt-1 cursor-pointer">
+                  <summary className="hover:text-zinc-300">View Raw Payload</summary>
+                  <pre className="mt-2 rounded bg-zinc-950 p-2.5 text-[10px] text-zinc-300 overflow-x-auto whitespace-pre-wrap border border-zinc-800/80">
+                    {JSON.stringify(evt.body, null, 2)}
                   </pre>
                 </details>
               </div>

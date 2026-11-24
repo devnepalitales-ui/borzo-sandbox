@@ -1,12 +1,40 @@
 @import "tailwindcss";
 
 @layer base {
+  :root {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+  }
+
   body {
-    background-color: #030712;
-    color: #f3f4f6;
+    background-color: #09090b;
+    color: #fafafa;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: rgba(225, 29, 72, 0.25);
+    color: #fff;
   }
 }
 
-code, pre {
-  font-family: 'JetBrains Mono', monospace;
+/* Crisp custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
