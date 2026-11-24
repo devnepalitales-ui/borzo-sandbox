@@ -3,19 +3,13 @@ import {
   Send,
   Calculator,
   Package,
-  ExternalLink,
-  RefreshCw,
-  MapPin,
   Phone,
-  ShieldCheck,
   ChevronRight,
   Menu,
   X,
-  Truck,
-  Sparkles,
   Store,
+  Flame,
 } from "lucide-react";
-import { Button } from "./components/ui/button";
 import { Badge } from "./components/ui/badge";
 import { CreateOrder } from "./components/CreateOrder";
 import { PriceCalculator } from "./components/PriceCalculator";
@@ -26,7 +20,6 @@ type Tab = "create" | "orders" | "calculator";
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>("create");
   const [config, setConfig] = useState<any>(null);
-  const [switchingEnv, setSwitchingEnv] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -41,43 +34,13 @@ export default function App() {
     fetchConfig();
   }, []);
 
-  const handleToggleEnv = async () => {
-    if (!config?.borzo?.env) return;
-    const targetEnv = config.borzo.env === "production" ? "test" : "production";
-    const confirmMsg =
-      targetEnv === "production"
-        ? "Switch to LIVE PRODUCTION mode?\n\nReal couriers will be requested from Borzo in Mumbai/Thane and real charges will apply."
-        : "Switch to TEST SANDBOX mode?\n\nRequests will be routed to robotapitest with simulated couriers.";
-    if (!confirm(confirmMsg)) return;
-
-    setSwitchingEnv(true);
-    try {
-      const res = await fetch("/api/borzo/switch-env", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ env: targetEnv }),
-      });
-      const data = await res.json();
-      if (data.is_successful) {
-        fetchConfig();
-        setRefreshTrigger((prev) => prev + 1);
-      }
-    } catch (err) {
-      console.error("Failed to switch env:", err);
-    } finally {
-      setSwitchingEnv(false);
-    }
-  };
-
-  const isProduction = config?.borzo?.env === "production";
-
   const navigationItems = [
     {
       id: "create" as Tab,
       label: "Dispatch & Book",
-      description: "Book courier from cloud kitchen",
+      description: "Book courier from kitchen",
       icon: Send,
-      badge: "Fast Book",
+      badge: "Quick Book",
     },
     {
       id: "orders" as Tab,
@@ -97,22 +60,19 @@ export default function App() {
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col md:flex-row antialiased selection:bg-rose-500/20 selection:text-white">
       {/* Mobile Top Header */}
       <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-zinc-800/80 bg-zinc-950 sticky top-0 z-50">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-rose-500 to-amber-600 font-bold text-white text-xs shadow-sm shadow-rose-950/60">
-            NT
+        <div>
+          <div className="font-bold text-sm text-zinc-100 flex items-center gap-2">
+            <span>Nepali Tales</span>
+            <Badge variant="destructive" className="text-[9px] px-1.5 py-0 font-mono">
+              <span className="h-1.5 w-1.5 rounded-full mr-1 bg-rose-400 animate-pulse" />
+              Live
+            </Badge>
           </div>
-          <div>
-            <div className="font-bold text-xs text-zinc-100 flex items-center gap-1.5">
-              <span>Nepali Tales</span>
-              <span className="text-zinc-600">/</span>
-              <span className="text-zinc-400 font-normal">Dispatcher</span>
-            </div>
-            <div className="text-[10px] text-zinc-500 font-mono">test.nepalitales.com</div>
-          </div>
+          <div className="text-[11px] text-zinc-500">Borzo Dispatcher</div>
         </div>
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white"
+          className="p-2 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white cursor-pointer"
         >
           {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
@@ -127,26 +87,18 @@ export default function App() {
         <div className="flex flex-col flex-1 overflow-y-auto">
           {/* Brand Header */}
           <div className="p-5 border-b border-zinc-800/80">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-amber-600 font-black text-white shadow-md shadow-rose-950/40 text-sm tracking-wide">
-                NT
-              </div>
+            <div className="flex items-center justify-between">
               <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-sm text-zinc-100 tracking-tight">Nepali Tales</span>
-                </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[11px] font-medium text-zinc-400">Borzo Dispatcher</span>
-                  <Badge variant={isProduction ? "destructive" : "warning"} className="text-[9px] px-1.5 py-0">
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full mr-1 ${
-                        isProduction ? "bg-rose-400 animate-pulse" : "bg-amber-400"
-                      }`}
-                    />
-                    {isProduction ? "Production" : "Sandbox"}
-                  </Badge>
-                </div>
+                <h2 className="font-bold text-base text-zinc-100 tracking-tight flex items-center gap-1.5">
+                  Nepali Tales
+                  <Flame className="w-4 h-4 text-rose-500" />
+                </h2>
+                <p className="text-xs text-zinc-400 mt-0.5">Borzo Dispatcher</p>
               </div>
+              <Badge variant="destructive" className="text-[9px] px-2 py-0.5 font-mono">
+                <span className="h-1.5 w-1.5 rounded-full mr-1 bg-rose-400 animate-pulse" />
+                Live
+              </Badge>
             </div>
 
             {/* Quick Context Pill */}
@@ -159,7 +111,7 @@ export default function App() {
           {/* Navigation Links */}
           <nav className="p-3 space-y-1.5 flex-1">
             <div className="px-3 pt-2 pb-1.5 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
-              Dispatch Console
+              Navigation
             </div>
 
             {navigationItems.map((item) => {
@@ -230,40 +182,13 @@ export default function App() {
           </div>
         </div>
 
-        {/* Sidebar Footer Controls */}
-        <div className="p-3 border-t border-zinc-800/80 bg-zinc-950 space-y-2">
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleToggleEnv}
-              disabled={switchingEnv}
-              className="h-8 text-[11px] font-medium justify-center px-2"
-            >
-              <RefreshCw className={`w-3 h-3 mr-1.5 ${switchingEnv ? "animate-spin" : ""}`} />
-              {isProduction ? "Test Mode" : "Live Mode"}
-            </Button>
-
-            <a
-              href={
-                isProduction
-                  ? "https://borzodelivery.com/in/cabinet/integration"
-                  : "https://apitest.borzodelivery.com/in/cabinet/integration"
-              }
-              target="_blank"
-              rel="noreferrer"
-              className="block"
-            >
-              <Button variant="secondary" size="sm" className="w-full h-8 text-[11px] justify-center px-2">
-                <ExternalLink className="w-3 h-3 text-zinc-400 mr-1.5" />
-                Cabinet
-              </Button>
-            </a>
-          </div>
-
-          <div className="text-center pt-1 text-[10px] text-zinc-600 font-mono">
-            test.nepalitales.com &middot; Borzo India
-          </div>
+        {/* Minimal Clean Sidebar Footer */}
+        <div className="p-3.5 border-t border-zinc-800/80 bg-zinc-950 flex items-center justify-between text-[11px] text-zinc-500 font-mono">
+          <span>test.nepalitales.com</span>
+          <span className="flex items-center gap-1.5 text-emerald-400 text-[10px]">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            Live Borzo
+          </span>
         </div>
       </aside>
 
