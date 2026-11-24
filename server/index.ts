@@ -1,12 +1,14 @@
 import path from "path";
 import fs from "fs";
 import express from "express";
-import { app, borzo } from "./app";
+import { fileURLToPath } from "url";
+import { app, borzo } from "../api/index";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 4000;
 const distPath = path.join(__dirname, "../dist");
 
-// Serve Vite production build if exists locally
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
   app.get("*", (req, res, next) => {

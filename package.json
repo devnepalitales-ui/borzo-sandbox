@@ -7,7 +7,9 @@
     "dev:server": "bun run server/index.ts",
     "dev:client": "vite --port 5174",
     "dev": "concurrently \"bun run server/index.ts\" \"vite --port 5174\"",
-    "build": "vite build",
+    "build:client": "vite build",
+    "build:server": "bun build api/index.ts --target=node --outfile=api/index.js",
+    "build": "vite build && bun build api/index.ts --target=node --outfile=api/index.js",
     "start": "bun run server/index.ts"
   },
   "dependencies": {
