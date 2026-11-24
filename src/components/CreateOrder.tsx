@@ -85,6 +85,9 @@ export function CreateOrder({
   const [customNotes, setCustomNotes] = useState("");
   const [clientOrderId, setClientOrderId] = useState(`NT-${Math.floor(1000 + Math.random() * 9000)}`);
 
+  // Delivery Fee Payer Toggle: "kitchen" (founder pays) or "customer" (recipient pays)
+  const [paymentPayer, setPaymentPayer] = useState<"kitchen" | "customer">("kitchen");
+
   // Live Calculation State
   const [calcLoading, setCalcLoading] = useState(false);
   const [calcResult, setCalcResult] = useState<any>(null);
@@ -221,7 +224,7 @@ export function CreateOrder({
       return;
     }
 
-    const confirmPrompt = `Confirm Delivery Booking:\n\n• Recipient: ${dropName} (${dropPhone})\n• Address: ${dropAddress}\n• Food Items (${totalItemCount}): ${compiledMatter}\n• Food Value: ₹${foodSubtotal}\n• Delivery Fee: ₹${calcResult?.payment_amount || "Calculating..."}\n\nProceed to dispatch Borzo motorbike courier?`;
+    const confirmPrompt = `Confirm Delivery Booking:\n\n• Recipient: ${dropName} (${dropPhone})\n• Address: ${dropAddress}\n• Food Items (${totalItemCount}): ${compiledMatter}\n• Food Value: ₹${foodSubtotal}\n• Delivery Fee: ₹${calcResult?.payment_amount || "Calculating..."}\n• Delivery Fee Paid By: ${paymentPayer === "kitchen" ? "Kitchen / Founder (at pickup)" : "Customer (at doorstep)"}\n\nProceed to dispatch Borzo motorbike courier?`;
 
     if (!confirm(confirmPrompt)) return;
 
@@ -234,6 +237,7 @@ export function CreateOrder({
       matter: compiledMatter,
       vehicle_type_id: 8,
       total_weight_kg: weightKg,
+      payment_method: "cash",
       points: [
         {
           address: pickupAddress,
@@ -242,6 +246,7 @@ export function CreateOrder({
             name: config?.kitchen?.name || "Nepali Tales Kitchen",
           },
           note: "Kitchen dispatch counter, Metropolis Aquaris Phase 2, Kasarvadavali, Thane West",
+          is_order_payment_here: paymentPayer === "kitchen",
         },
         {
           address: dropAddress,
@@ -255,12 +260,16 @@ export function CreateOrder({
             buildingNumber ? `Bldg: ${buildingNumber}` : "",
             floorNumber ? `Floor: ${floorNumber}` : "",
             dropNote,
+            paymentPayer === "customer"
+              ? `Collect ₹${calcResult?.payment_amount || ""} delivery fee cash from customer`
+              : "",
           ]
             .filter(Boolean)
             .join(" | "),
           apartment_number: apartmentNumber || null,
           building_number: buildingNumber || null,
           floor_number: floorNumber || null,
+          is_order_payment_here: paymentPayer === "customer",
         },
       ],
     };
@@ -322,7 +331,11 @@ export function CreateOrder({
 
   const getWhatsAppMessage = () => {
     const itemsText = selectedItems.length > 0 ? `\nItems: ${compiledMatter}` : "";
-    return `Namaste ${dropName || "there"}! 🥟 Your authentic Nepali food order from Nepali Tales is freshly prepared and out for delivery with Borzo courier. 🛵${itemsText}\n\nTrack your courier live here:\n${trackingUrl || ""}\n\nEnjoy your meal!`;
+    const paymentNote =
+      paymentPayer === "customer" && calcResult?.payment_amount
+        ? `\n💰 Delivery Fee: ₹${calcResult.payment_amount} (to be paid in cash to the rider)`
+        : "";
+    return `Namaste ${dropName || "there"}! 🥟 Your authentic Nepali food order from Nepali Tales is freshly prepared and out for delivery with Borzo courier. 🛵${itemsText}${paymentNote}\n\nTrack your courier live here:\n${trackingUrl || ""}\n\nEnjoy your meal!`;
   };
 
   const distanceKm = calcResult?.points?.[1]?.previous_point_driving_distance_meters
@@ -658,6 +671,46 @@ export function CreateOrder({
             ) : (
               <p className="text-[10px] text-zinc-600 italic">No food items added yet</p>
             )}
+          </div>
+
+          {/* Delivery Fee Payer Toggle */}
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="font-semibold text-zinc-300">Delivery Fee Payer</span>
+              <span className="text-[10px] text-zinc-500 font-mono">
+                {paymentPayer === "kitchen" ? "Paid at Kitchen" : "Collect at Door"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5 p-1 bg-zinc-950 rounded-lg border border-zinc-800">
+              <button
+                type="button"
+                onClick={() => setPaymentPayer("kitchen")}
+                className={`py-1.5 px-2 rounded-md text-xs font-semibold transition-all cursor-pointer text-center ${
+                  paymentPayer === "kitchen"
+                    ? "bg-rose-600 text-white shadow-sm"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                Kitchen Pays
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentPayer("customer")}
+                className={`py-1.5 px-2 rounded-md text-xs font-semibold transition-all cursor-pointer text-center ${
+                  paymentPayer === "customer"
+                    ? "bg-rose-600 text-white shadow-sm"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                Customer Pays
+              </button>
+            </div>
+            <p className="text-[10px] text-zinc-500 leading-tight">
+              {paymentPayer === "kitchen"
+                ? "Kitchen hands cash to rider at pickup."
+                : "Rider collects delivery cash from recipient at doorstep."}
+            </p>
           </div>
 
           {/* Fare Calculator Output */}
