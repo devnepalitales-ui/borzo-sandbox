@@ -199,16 +199,22 @@ app.post("/api/borzo/raw", async (req, res) => {
 
 // 8. Webhook Receiver (Accepts callbacks from Borzo for statuses receiving)
 const handleWebhook = (req: any, res: express.Response) => {
-  const signatureHeader = req.headers["x-dv-signature"] as string | undefined;
+  const signatureHeader = (req.headers["x-dv-signature"] || req.headers["x-dv-auth-token"]) as string | undefined;
   const callbackToken = process.env.BORZO_CALLBACK_TOKEN;
 
   let isSignatureValid: boolean | null = null;
-  if (callbackToken && signatureHeader && req.rawBody) {
-    try {
-      const computed = crypto.createHmac("sha256", callbackToken).update(req.rawBody).digest("hex");
-      isSignatureValid = computed.toLowerCase() === signatureHeader.toLowerCase();
-    } catch (e) {
-      isSignatureValid = false;
+  if (callbackToken && signatureHeader) {
+    // Check 1: Direct token match
+    if (signatureHeader.toLowerCase() === callbackToken.toLowerCase()) {
+      isSignatureValid = true;
+    } else if (req.rawBody) {
+      // Check 2: HMAC-SHA256 signature verification
+      try {
+        const computed = crypto.createHmac("sha256", callbackToken).update(req.rawBody).digest("hex");
+        isSignatureValid = computed.toLowerCase() === signatureHeader.toLowerCase();
+      } catch (e) {
+        isSignatureValid = false;
+      }
     }
   }
 

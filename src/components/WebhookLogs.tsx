@@ -22,7 +22,7 @@ export function WebhookLogs() {
   const [copiedToken, setCopiedToken] = useState(false);
 
   const callbackUrl = "https://test.nepalitales.com/api/borzo/webhook";
-  const recommendedToken = "nt_borzo_callback_2026";
+  const activeToken = "90BA3628912AA7768780F03A9D9A52A6AFCEA25A";
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -200,15 +200,15 @@ export function WebhookLogs() {
               </span>
               <button
                 type="button"
-                onClick={() => copyText(recommendedToken, "token")}
+                onClick={() => copyText(activeToken, "token")}
                 className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1 cursor-pointer"
               >
                 {copiedToken ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                 {copiedToken ? "Copied!" : "Copy Token"}
               </button>
             </div>
-            <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 font-mono text-xs text-indigo-300 select-all">
-              {recommendedToken}
+            <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 font-mono text-xs text-indigo-300 select-all break-all">
+              {activeToken}
             </div>
             <p className="text-[11px] text-slate-500">
               Enter any secret key here (or copy the one above). Borzo uses it to compute an HMAC-SHA256 signature in the <code className="text-slate-300">X-DV-Signature</code> header so our server can authenticate genuine callbacks.
