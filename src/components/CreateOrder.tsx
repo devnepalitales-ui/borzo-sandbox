@@ -1,28 +1,20 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
-  Send,
-  MapPin,
-  Phone,
-  User,
   AlertCircle,
   CheckCircle2,
   ExternalLink,
   Loader2,
   Copy,
-  Calculator,
-  Share2,
-  Navigation,
-  ShieldAlert,
   Check,
   RotateCcw,
-  Bike,
   Plus,
   Minus,
-  UtensilsCrossed,
+  ArrowUpRight,
+  Share2,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/card";
+import { Card } from "./ui/card";
 import { Input } from "./ui/input";
 import { formatCurrency, formatPhone } from "../lib/utils";
 
@@ -79,13 +71,13 @@ export function CreateOrder({
   const [floorNumber, setFloorNumber] = useState("");
   const [dropNote, setDropNote] = useState("");
 
-  // Menu Category Filter & Selection
+  // Menu Selection
   const [selectedCategory, setSelectedCategory] = useState<"All" | "Momo" | "Shaphaley" | "Add-on">("All");
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [customNotes, setCustomNotes] = useState("");
   const [clientOrderId, setClientOrderId] = useState(`NT-${Math.floor(1000 + Math.random() * 9000)}`);
 
-  // Delivery Fee Payer Toggle: "kitchen" (founder pays) or "customer" (recipient pays)
+  // Delivery Fee Payer Toggle
   const [paymentPayer, setPaymentPayer] = useState<"kitchen" | "customer">("kitchen");
 
   // Live Calculation State
@@ -99,7 +91,6 @@ export function CreateOrder({
   const [bookingError, setBookingError] = useState<string | null>(null);
 
   // UI state
-  const [copiedLink, setCopiedLink] = useState(false);
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
 
   useEffect(() => {
@@ -109,7 +100,6 @@ export function CreateOrder({
     }
   }, [config]);
 
-  // Handle Menu Item Quantity Changes
   const updateQuantity = (id: string, delta: number) => {
     setQuantities((prev) => {
       const current = prev[id] || 0;
@@ -124,7 +114,6 @@ export function CreateOrder({
     });
   };
 
-  // Compute selected items breakdown, subtotal, and matter string
   const selectedItems = useMemo(() => {
     const list: Array<{ item: MenuItem; count: number; total: number }> = [];
     for (const item of MENU_ITEMS) {
@@ -168,10 +157,9 @@ export function CreateOrder({
     return clean;
   };
 
-  // Calculate Real Live Delivery Rate
   const handleCalculate = async () => {
     if (!dropAddress || !pickupAddress) {
-      setCalcError("Please enter a street delivery address.");
+      setCalcError("Please enter a street delivery address first.");
       return;
     }
 
@@ -217,7 +205,6 @@ export function CreateOrder({
     }
   };
 
-  // Book Borzo Delivery
   const handleBookDelivery = async () => {
     if (!dropAddress || !dropPhone || !dropName) {
       setBookingError("Please provide recipient Name, Phone number, and Delivery Address.");
@@ -318,31 +305,22 @@ export function CreateOrder({
     createdOrder?.points?.[0]?.tracking_url ||
     (createdOrder?.order_id ? `https://borzodelivery.com/in/track/${createdOrder.order_id}` : null);
 
-  const copyToClipboard = (text: string, type: "link" | "wa") => {
-    navigator.clipboard.writeText(text);
-    if (type === "link") {
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2000);
-    } else {
-      setCopiedWhatsApp(true);
-      setTimeout(() => setCopiedWhatsApp(false), 2000);
-    }
-  };
-
-  const getWhatsAppMessage = () => {
+  const copyWhatsApp = () => {
     const itemsText = selectedItems.length > 0 ? `\nItems: ${compiledMatter}` : "";
     const paymentNote =
       paymentPayer === "customer" && calcResult?.payment_amount
         ? `\n💰 Delivery Fee: ₹${calcResult.payment_amount} (to be paid in cash to the rider)`
         : "";
-    return `Namaste ${dropName || "there"}! 🥟 Your authentic Nepali food order from Nepali Tales is freshly prepared and out for delivery with Borzo courier. 🛵${itemsText}${paymentNote}\n\nTrack your courier live here:\n${trackingUrl || ""}\n\nEnjoy your meal!`;
+    const msg = `Namaste ${dropName || "there"}! 🥟 Your authentic Nepali food order from Nepali Tales is freshly prepared and out for delivery with Borzo courier. 🛵${itemsText}${paymentNote}\n\nTrack your courier live here:\n${trackingUrl || ""}\n\nEnjoy your meal!`;
+    navigator.clipboard.writeText(msg);
+    setCopiedWhatsApp(true);
+    setTimeout(() => setCopiedWhatsApp(false), 2000);
   };
 
   const distanceKm = calcResult?.points?.[1]?.previous_point_driving_distance_meters
     ? (calcResult.points[1].previous_point_driving_distance_meters / 1000).toFixed(1)
     : null;
 
-  // Filtered menu items by category
   const filteredMenuItems = useMemo(() => {
     if (selectedCategory === "All") return MENU_ITEMS;
     return MENU_ITEMS.filter((item) => item.category === selectedCategory);
@@ -350,264 +328,385 @@ export function CreateOrder({
 
   return (
     <div className="space-y-4">
-      {/* Top Banner / Reset */}
+      {/* Success Confirmation Bento Tile */}
       {createdOrder && (
-        <Card className="border-emerald-500/40 bg-gradient-to-br from-emerald-950/40 via-zinc-900/90 to-zinc-950 p-4 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800/80 pb-3">
+        <Card className="p-5 bg-emerald-50/90 border-emerald-200 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                <CheckCircle2 className="h-5 w-5" />
+              <div className="h-10 w-10 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-white">Borzo Courier Dispatched!</h3>
-                  <Badge variant="success">Confirmed</Badge>
+                  <h3 className="text-sm font-bold text-[#111214]">Borzo Courier Dispatched!</h3>
+                  <Badge variant="success">Order #{createdOrder.order_id}</Badge>
                 </div>
-                <p className="text-xs text-zinc-400">Order ID: #{createdOrder.order_id}</p>
+                <p className="text-xs text-zinc-600">
+                  Courier requested for pickup at Thane West kitchen &middot; {formatCurrency(createdOrder.payment_amount)}
+                </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleReset} className="h-8 gap-1.5 text-xs">
-                <RotateCcw className="h-3.5 w-3.5" />
-                New Dispatch
+              {trackingUrl && (
+                <>
+                  <a href={trackingUrl} target="_blank" rel="noreferrer">
+                    <Button variant="outline" size="sm">
+                      Open Tracker <ExternalLink className="w-3 h-3" />
+                    </Button>
+                  </a>
+                  <Button variant="primary" size="sm" onClick={copyWhatsApp}>
+                    {copiedWhatsApp ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
+                    {copiedWhatsApp ? "Copied!" : "WhatsApp Update"}
+                  </Button>
+                </>
+              )}
+              <Button variant="secondary" size="sm" onClick={handleReset}>
+                <RotateCcw className="w-3.5 h-3.5" /> New Dispatch
               </Button>
             </div>
           </div>
-
-          {trackingUrl && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs bg-emerald-950/30 p-2.5 rounded-lg border border-emerald-500/20">
-              <span className="font-mono text-zinc-200 truncate">{trackingUrl}</span>
-              <div className="flex items-center gap-2 shrink-0">
-                <a href={trackingUrl} target="_blank" rel="noreferrer">
-                  <Button variant="secondary" size="sm" className="h-7 text-xs">Open</Button>
-                </a>
-                <Button
-                  variant="success"
-                  size="sm"
-                  onClick={() => copyToClipboard(getWhatsAppMessage(), "wa")}
-                  className="h-7 text-xs"
-                >
-                  {copiedWhatsApp ? "Copied!" : "WhatsApp Update"}
-                </Button>
-              </div>
-            </div>
-          )}
         </Card>
       )}
 
-      {/* Error Banners */}
+      {/* Alerts */}
       {bookingError && (
-        <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300 flex items-start gap-2">
-          <AlertCircle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
-          <div className="space-y-0.5">
-            <span className="font-semibold block">Booking Failed:</span>
-            <pre className="font-mono text-[11px] whitespace-pre-wrap">{bookingError}</pre>
-          </div>
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-700 flex items-start gap-2">
+          <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+          <pre className="font-mono text-[11px] whitespace-pre-wrap">{bookingError}</pre>
         </div>
       )}
-
       {calcError && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-300 flex items-start gap-2">
-          <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
           <span>{calcError}</span>
         </div>
       )}
 
-      {/* 3-COLUMN ZERO-SCROLL DISPATCH TERMINAL */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-        {/* COLUMN 1 (4 cols): Delivery Destination */}
-        <Card className="lg:col-span-4 p-4 space-y-3 border-zinc-800 bg-zinc-900/60">
-          <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2.5">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-rose-400" />
-              <span className="text-xs font-bold uppercase tracking-wider text-zinc-200">
-                1. Delivery Destination
-              </span>
+      {/* ROW 1: ASYMMETRIC BENTO HERO ROW (Destination Left + Dark Quote & Sub-cards Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        {/* LEFT BENTO TILE (6 cols): Delivery Destination (Pure White Card) */}
+        <Card className="lg:col-span-6 p-5 flex flex-col justify-between space-y-3.5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-[#111214] tracking-tight">Delivery Destination</h2>
+              <p className="text-[11px] text-zinc-500">Enter recipient contact and street address</p>
             </div>
-            <button
-              type="button"
-              onClick={handleCalculate}
-              className="text-[11px] font-semibold text-rose-400 hover:text-rose-300 cursor-pointer"
-            >
-              Check Rate
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleCalculate}
+                disabled={calcLoading}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#F3F4F6] hover:bg-zinc-200/80 px-3 py-1.5 text-[11px] font-semibold text-[#111214] transition-colors cursor-pointer"
+              >
+                {calcLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Check Rate"}
+                <ArrowUpRight className="w-3 h-3 text-zinc-500" />
+              </button>
+            </div>
           </div>
 
           <div className="space-y-2.5">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <label className="text-[10px] font-medium text-zinc-400 block mb-1">
-                  Recipient Name *
+                <label className="text-[11px] font-medium text-zinc-500 block mb-1">
+                  Recipient Name <span className="text-rose-500">*</span>
                 </label>
                 <Input
-                  placeholder="e.g. Diwash Pradhan"
+                  placeholder="e.g. Ankit Bhavarthe"
                   value={dropName}
                   onChange={(e) => setDropName(e.target.value)}
-                  className="h-8 text-xs"
                 />
               </div>
               <div>
-                <label className="text-[10px] font-medium text-zinc-400 block mb-1">
-                  Phone Number *
+                <label className="text-[11px] font-medium text-zinc-500 block mb-1">
+                  Phone Number <span className="text-rose-500">*</span>
                 </label>
                 <Input
-                  placeholder="e.g. 9820000001"
+                  placeholder="e.g. 9309348875"
                   value={dropPhone}
                   onChange={(e) => setDropPhone(e.target.value)}
-                  className="h-8 text-xs font-mono"
+                  className="font-mono"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-[10px] font-medium text-zinc-400 block mb-1">
-                Street Address in Thane / Mumbai *
+              <label className="text-[11px] font-medium text-zinc-500 block mb-1">
+                Street Delivery Address <span className="text-rose-500">*</span>
               </label>
               <textarea
                 rows={2}
-                placeholder="Apartment, street name, area, Thane West"
+                placeholder="Apartment/Society name, street, area, Thane / Mumbai"
                 value={dropAddress}
                 onChange={(e) => setDropAddress(e.target.value)}
                 onBlur={() => {
                   if (dropAddress) handleCalculate();
                 }}
-                className="w-full rounded-md border border-zinc-800 bg-zinc-950 p-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-rose-500 resize-none"
+                className="w-full rounded-xl border border-zinc-200/80 bg-[#F7F8FA] p-2.5 text-xs text-[#111214] placeholder:text-zinc-400 focus:outline-none focus:bg-white focus:border-[#0066FF] focus:ring-2 focus:ring-[#0066FF]/20 resize-none transition-colors"
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-1.5">
-              <div>
-                <label className="text-[10px] text-zinc-500 block mb-0.5">Flat/Apt</label>
-                <Input
-                  placeholder="405"
-                  value={apartmentNumber}
-                  onChange={(e) => setApartmentNumber(e.target.value)}
-                  className="h-7 text-xs px-2"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-zinc-500 block mb-0.5">Wing/Bldg</label>
-                <Input
-                  placeholder="Wing B"
-                  value={buildingNumber}
-                  onChange={(e) => setBuildingNumber(e.target.value)}
-                  className="h-7 text-xs px-2"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-zinc-500 block mb-0.5">Floor</label>
-                <Input
-                  placeholder="4th"
-                  value={floorNumber}
-                  onChange={(e) => setFloorNumber(e.target.value)}
-                  className="h-7 text-xs px-2"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-[10px] text-zinc-500 block mb-0.5">Driver Note (Optional)</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <Input
-                placeholder="e.g. Ring doorbell / Leave at gate"
+                placeholder="Flat / Apt"
+                value={apartmentNumber}
+                onChange={(e) => setApartmentNumber(e.target.value)}
+                className="h-8 text-[11px]"
+              />
+              <Input
+                placeholder="Wing / Bldg"
+                value={buildingNumber}
+                onChange={(e) => setBuildingNumber(e.target.value)}
+                className="h-8 text-[11px]"
+              />
+              <Input
+                placeholder="Floor #"
+                value={floorNumber}
+                onChange={(e) => setFloorNumber(e.target.value)}
+                className="h-8 text-[11px]"
+              />
+              <Input
+                placeholder="Driver note"
                 value={dropNote}
                 onChange={(e) => setDropNote(e.target.value)}
-                className="h-7 text-xs"
+                className="h-8 text-[11px]"
               />
             </div>
           </div>
         </Card>
 
-        {/* COLUMN 2 (5 cols): Food Items & Add-ons (Zero Scroll Menu) */}
-        <Card className="lg:col-span-5 p-4 space-y-3 border-zinc-800 bg-zinc-900/60">
-          <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2.5">
-            <div className="flex items-center gap-2">
-              <UtensilsCrossed className="w-4 h-4 text-rose-400" />
-              <span className="text-xs font-bold uppercase tracking-wider text-zinc-200">
-                2. Select Food Items
+        {/* RIGHT BENTO STACK (6 cols): Black Hero Quote Card + Dual Bento Sub-Cards */}
+        <div className="lg:col-span-6 flex flex-col gap-4">
+          {/* TOP HERO OBSIDIAN CARD (Matching Reference "Join Our Financial Class Mastery" Card) */}
+          <div className="rounded-[24px] bg-gradient-to-br from-[#1C1D22] via-[#111214] to-[#08090B] text-white p-5 relative overflow-hidden shadow-sm flex flex-col justify-between min-h-[142px]">
+            {/* Subtle diagonal metallic gloss like Fingoals dark bento card */}
+            <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-white/[0.04] blur-2xl" />
+
+            <div className="flex items-center justify-between gap-2 relative z-10">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-zinc-300">Live Borzo Quote</span>
+                {distanceKm && (
+                  <span className="inline-flex items-center rounded-full bg-emerald-400/15 border border-emerald-400/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-300 font-mono">
+                    {distanceKm} km
+                  </span>
+                )}
+              </div>
+              <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-medium text-zinc-300">
+                Motorbike &middot; Standard
               </span>
             </div>
-            {totalItemCount > 0 && (
-              <Badge variant="secondary" className="font-mono text-[10px] px-1.5 py-0">
-                {totalItemCount} selected (₹{foodSubtotal})
-              </Badge>
-            )}
+
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pt-3 relative z-10">
+              <div>
+                {calcLoading ? (
+                  <div className="flex items-center gap-2 text-zinc-300 py-1">
+                    <Loader2 className="w-5 h-5 animate-spin text-[#0066FF]" />
+                    <span className="text-sm font-medium">Calculating live rate...</span>
+                  </div>
+                ) : calcResult ? (
+                  <div>
+                    <div className="text-3xl sm:text-4xl font-bold tracking-tight tabular-nums leading-none">
+                      {formatCurrency(calcResult.payment_amount)}
+                    </div>
+                    <p className="text-[11px] text-zinc-400 mt-1.5">
+                      {calcResult.points?.[0]?.required_finish_datetime
+                        ? `Pickup arrival by ${new Date(calcResult.points[0].required_finish_datetime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                        : "Live Borzo Motorbike Courier"}
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="text-2xl font-bold tracking-tight text-white">Ready to Quote</div>
+                    <p className="text-[11px] text-zinc-400 mt-1">
+                      Add recipient address on the left to calculate live delivery cost
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Electric Cobalt Blue Primary Pill Button */}
+              {calcResult ? (
+                <button
+                  type="button"
+                  onClick={handleBookDelivery}
+                  disabled={bookingLoading}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0066FF] hover:bg-[#0052D4] text-white font-semibold text-xs px-5 py-2.5 transition-all cursor-pointer shrink-0 shadow-md shadow-blue-950/50 active:scale-[0.98]"
+                >
+                  {bookingLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <span>Book Courier</span>
+                      <span className="h-5 w-5 rounded-full bg-white/20 flex items-center justify-center">
+                        <ArrowUpRight className="w-3 h-3" />
+                      </span>
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleCalculate}
+                  disabled={calcLoading || !dropAddress}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0066FF] hover:bg-[#0052D4] disabled:opacity-40 text-white font-semibold text-xs px-5 py-2.5 transition-all cursor-pointer shrink-0"
+                >
+                  <span>Calculate Fare</span>
+                  <span className="h-5 w-5 rounded-full bg-white/20 flex items-center justify-center">
+                    <ArrowUpRight className="w-3 h-3" />
+                  </span>
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Quick Category Filter Pills */}
-          <div className="flex items-center gap-1 overflow-x-auto pb-1">
-            {(["All", "Momo", "Shaphaley", "Add-on"] as const).map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer shrink-0 ${
-                  selectedCategory === cat
-                    ? "bg-rose-500/20 text-rose-300 border border-rose-500/40"
-                    : "bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800/80"
-                }`}
-              >
-                {cat === "All" ? `All (${MENU_ITEMS.length})` : cat}
-              </button>
-            ))}
+          {/* BOTTOM SUB-ROW: White Metric Tile + Black Payer Toggle Tile */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
+            {/* White Bento Tile: Food Value (Matching "Today Received $532,921" card) */}
+            <Card className="p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-zinc-500">Order Parcel</span>
+                <span className="inline-flex items-center rounded-full bg-[#F3F4F6] px-2.5 py-0.5 text-[10px] font-semibold text-zinc-700 font-mono">
+                  {totalItemCount} {totalItemCount === 1 ? "item" : "items"}
+                </span>
+              </div>
+              <div className="text-3xl font-bold text-[#111214] tabular-nums tracking-tight my-1">
+                ₹{foodSubtotal}
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                <span>Est. weight: {weightKg} kg</span>
+                <span className="text-emerald-600 font-semibold">Ready to pack</span>
+              </div>
+            </Card>
+
+            {/* Black Bento Tile: Delivery Fee Payer Toggle (Matching "Financial Report" black card) */}
+            <div className="rounded-[24px] bg-[#111214] text-white p-4 flex flex-col justify-between shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-medium text-zinc-300">
+                  Delivery Fee Payer
+                </span>
+                <span className="text-[10px] font-mono text-zinc-400">
+                  {paymentPayer === "kitchen" ? "At Pickup" : "At Door"}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1.5 p-1 bg-white/[0.06] rounded-full my-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentPayer("kitchen")}
+                  className={`py-1.5 px-2 rounded-full text-[11px] font-semibold transition-all cursor-pointer text-center ${
+                    paymentPayer === "kitchen"
+                      ? "bg-[#0066FF] text-white shadow-sm"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  Kitchen Pays
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentPayer("customer")}
+                  className={`py-1.5 px-2 rounded-full text-[11px] font-semibold transition-all cursor-pointer text-center ${
+                    paymentPayer === "customer"
+                      ? "bg-[#0066FF] text-white shadow-sm"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  Customer Pays
+                </button>
+              </div>
+
+              <p className="text-[10px] text-zinc-400 leading-tight">
+                {paymentPayer === "kitchen"
+                  ? "Kitchen hands cash to courier at pickup."
+                  : "Courier collects fee cash from customer."}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ROW 2: WIDE MENU BENTO GRID + PARCEL RECEIPT BENTO CARD */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        {/* WIDE MENU BENTO CARD (8 cols — Zero Scroll 3-Column Grid of All Products & Add-ons) */}
+        <Card className="lg:col-span-8 p-5 flex flex-col justify-between space-y-3.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-bold text-[#111214] tracking-tight">Select Food Items & Add-ons</h2>
+              <p className="text-[11px] text-zinc-500">Tap + to add dishes or chutneys to this parcel</p>
+            </div>
+
+            {/* Fingoals Pill Category Filter */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {(["All", "Momo", "Shaphaley", "Add-on"] as const).map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors cursor-pointer ${
+                    selectedCategory === cat
+                      ? "bg-[#111214] text-white"
+                      : "bg-[#F3F4F6] text-zinc-600 hover:text-[#111214] hover:bg-zinc-200/70"
+                  }`}
+                >
+                  {cat === "All" ? `All (${MENU_ITEMS.length})` : cat}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Compact Menu Grid - Viewport Fitted */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[380px] overflow-y-auto pr-0.5">
+          {/* 3-Column Compact Menu Grid — Fits All Items Cleanly Without Scroll */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
             {filteredMenuItems.map((item) => {
               const qty = quantities[item.id] || 0;
               const isVeg = item.type === "Veg";
               return (
                 <div
                   key={item.id}
-                  className={`flex items-center justify-between p-2 rounded-lg border transition-all ${
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-2xl border transition-all ${
                     qty > 0
-                      ? "border-rose-500/50 bg-rose-500/10 text-zinc-100"
-                      : "border-zinc-800/80 bg-zinc-950/70 hover:border-zinc-700/80"
+                      ? "bg-[#EEF4FF] border-[#0066FF]/40"
+                      : "bg-[#F7F8FA] border-black/[0.03] hover:border-zinc-300"
                   }`}
                 >
-                  <div className="min-w-0 pr-1.5">
-                    <div className="flex items-center gap-1.5 truncate">
+                  <div className="min-w-0 pr-2">
+                    <div className="flex items-center gap-1.5">
                       {item.type && (
                         <span
-                          className={`h-1.5 w-1.5 rounded-full shrink-0 ${
-                            isVeg ? "bg-emerald-400" : "bg-rose-500"
+                          className={`h-2 w-2 rounded-full shrink-0 ${
+                            isVeg ? "bg-emerald-500" : "bg-rose-500"
                           }`}
                         />
                       )}
-                      <span className="text-xs font-semibold text-zinc-200 truncate">
-                        {item.name}
-                      </span>
+                      <span className="text-xs font-semibold text-[#111214] truncate">{item.name}</span>
                     </div>
-                    <div className="text-[10px] font-mono text-zinc-400 flex items-center gap-1 mt-0.5">
-                      <span className="font-bold text-white">₹{item.price}</span>
+                    <div className="text-[11px] font-mono text-zinc-500 flex items-center gap-1 mt-0.5">
+                      <span className="font-bold text-[#111214]">₹{item.price}</span>
                       {item.portion && (
                         <>
-                          <span className="text-zinc-600">&middot;</span>
-                          <span className="text-zinc-500">{item.portion}</span>
+                          <span>&middot;</span>
+                          <span>{item.portion}</span>
                         </>
                       )}
                     </div>
                   </div>
 
-                  {/* Plus / Minus Counter */}
+                  {/* Clean Pill Counter */}
                   <div className="flex items-center gap-1 shrink-0">
                     {qty > 0 ? (
                       <>
                         <button
                           type="button"
                           onClick={() => updateQuantity(item.id, -1)}
-                          className="h-6 w-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 flex items-center justify-center cursor-pointer transition-colors"
+                          className="h-6 w-6 rounded-full bg-white border border-zinc-200 hover:bg-zinc-100 text-[#111214] flex items-center justify-center cursor-pointer transition-colors"
                         >
                           <Minus className="w-3 h-3" />
                         </button>
-                        <span className="w-5 text-center text-xs font-bold font-mono text-white">
+                        <span className="w-4 text-center text-xs font-bold font-mono text-[#111214]">
                           {qty}
                         </span>
                         <button
                           type="button"
                           onClick={() => updateQuantity(item.id, 1)}
-                          className="h-6 w-6 rounded bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center cursor-pointer transition-colors"
+                          className="h-6 w-6 rounded-full bg-[#0066FF] hover:bg-[#0052D4] text-white flex items-center justify-center cursor-pointer transition-colors"
                         >
                           <Plus className="w-3 h-3" />
                         </button>
@@ -616,9 +715,9 @@ export function CreateOrder({
                       <button
                         type="button"
                         onClick={() => updateQuantity(item.id, 1)}
-                        className="h-6 px-2 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-300 text-[11px] font-medium flex items-center gap-1 cursor-pointer transition-colors"
+                        className="h-7 px-2.5 rounded-full bg-white hover:bg-[#111214] hover:text-white border border-zinc-200/90 text-[#111214] text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
                       >
-                        <Plus className="w-2.5 h-2.5 text-zinc-400" />
+                        <Plus className="w-3 h-3" />
                         Add
                       </button>
                     )}
@@ -627,157 +726,53 @@ export function CreateOrder({
               );
             })}
           </div>
-
-          {/* Quick packaging note */}
-          <div>
-            <Input
-              placeholder="Packaging note (e.g. extra dip, keep upright)"
-              value={customNotes}
-              onChange={(e) => setCustomNotes(e.target.value)}
-              className="h-7 text-[11px]"
-            />
-          </div>
         </Card>
 
-        {/* COLUMN 3 (3 cols): Quote, Receipt & 1-Click Book */}
-        <Card className="lg:col-span-3 p-4 space-y-4 border-zinc-800 bg-zinc-900/90 shadow-lg">
-          <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2.5">
-            <div className="flex items-center gap-2">
-              <Bike className="w-4 h-4 text-rose-500" />
-              <span className="text-xs font-bold uppercase tracking-wider text-zinc-200">
-                3. Live Dispatch
-              </span>
+        {/* RIGHT PARCEL SUMMARY BENTO CARD (4 cols — Receipt + Notes) */}
+        <Card className="lg:col-span-4 p-5 flex flex-col justify-between space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-[#111214] tracking-tight">Parcel Summary</h2>
+              <p className="text-[11px] text-zinc-500">Sent to courier manifest</p>
             </div>
-            <Badge variant="destructive" className="text-[9px] px-1.5 py-0">
-              Borzo Live
-            </Badge>
+            <span className="inline-flex items-center rounded-full bg-[#F3F4F6] px-2.5 py-0.5 text-[10px] font-semibold text-zinc-700 font-mono">
+              ₹{foodSubtotal}
+            </span>
           </div>
 
-          {/* Selected Food Cart Mini-Receipt */}
-          <div className="rounded-lg bg-zinc-950 p-2.5 border border-zinc-800/80 space-y-1.5 text-xs">
-            <div className="flex items-center justify-between text-zinc-400 font-medium text-[11px]">
-              <span>Order Parcel</span>
-              <span className="font-mono text-zinc-200 font-bold">₹{foodSubtotal}</span>
-            </div>
+          {/* Items Breakdown List */}
+          <div className="flex-1 rounded-2xl bg-[#F7F8FA] p-3 border border-black/[0.03] flex flex-col justify-between">
             {selectedItems.length > 0 ? (
-              <div className="space-y-1 max-h-24 overflow-y-auto pr-1 text-[11px] text-zinc-400 divide-y divide-zinc-900">
+              <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1 text-xs divide-y divide-zinc-200/60">
                 {selectedItems.map((si) => (
-                  <div key={si.item.id} className="flex justify-between pt-0.5">
-                    <span className="truncate pr-1">{si.count}x {si.item.name}</span>
-                    <span className="font-mono text-zinc-300 shrink-0">₹{si.total}</span>
+                  <div key={si.item.id} className="flex justify-between pt-1 first:pt-0 text-[#111214]">
+                    <span className="truncate pr-2 font-medium">
+                      {si.count}x {si.item.name}
+                    </span>
+                    <span className="font-mono font-semibold shrink-0">₹{si.total}</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-[10px] text-zinc-600 italic">No food items added yet</p>
-            )}
-          </div>
-
-          {/* Delivery Fee Payer Toggle */}
-          <div className="space-y-1.5 pt-1">
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="font-semibold text-zinc-300">Delivery Fee Payer</span>
-              <span className="text-[10px] text-zinc-500 font-mono">
-                {paymentPayer === "kitchen" ? "Paid at Kitchen" : "Collect at Door"}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-1.5 p-1 bg-zinc-950 rounded-lg border border-zinc-800">
-              <button
-                type="button"
-                onClick={() => setPaymentPayer("kitchen")}
-                className={`py-1.5 px-2 rounded-md text-xs font-semibold transition-all cursor-pointer text-center ${
-                  paymentPayer === "kitchen"
-                    ? "bg-rose-600 text-white shadow-sm"
-                    : "text-zinc-400 hover:text-zinc-200"
-                }`}
-              >
-                Kitchen Pays
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentPayer("customer")}
-                className={`py-1.5 px-2 rounded-md text-xs font-semibold transition-all cursor-pointer text-center ${
-                  paymentPayer === "customer"
-                    ? "bg-rose-600 text-white shadow-sm"
-                    : "text-zinc-400 hover:text-zinc-200"
-                }`}
-              >
-                Customer Pays
-              </button>
-            </div>
-            <p className="text-[10px] text-zinc-500 leading-tight">
-              {paymentPayer === "kitchen"
-                ? "Kitchen hands cash to rider at pickup."
-                : "Rider collects delivery cash from recipient at doorstep."}
-            </p>
-          </div>
-
-          {/* Fare Calculator Output */}
-          {calcLoading ? (
-            <div className="py-6 text-center space-y-1.5">
-              <Loader2 className="w-5 h-5 animate-spin text-rose-500 mx-auto" />
-              <p className="text-[11px] text-zinc-400">Querying Borzo rates...</p>
-            </div>
-          ) : calcResult ? (
-            <div className="space-y-3">
-              <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-center">
-                <span className="text-[10px] text-zinc-400 block uppercase tracking-wider">
-                  Delivery Charge
-                </span>
-                <div className="text-2xl font-black text-white font-mono tracking-tight">
-                  {formatCurrency(calcResult.payment_amount)}
-                </div>
-                <div className="flex items-center justify-center gap-1.5 mt-1.5">
-                  {distanceKm && (
-                    <Badge variant="secondary" className="font-mono text-[9px] px-1.5 py-0">
-                      {distanceKm} km
-                    </Badge>
-                  )}
-                  <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                    Motorbike
-                  </Badge>
-                </div>
+              <div className="py-6 text-center text-xs text-zinc-400">
+                No items selected yet. Tap <strong>+ Add</strong> on the menu.
               </div>
+            )}
 
-              {/* Dispatch Action Button */}
-              <Button
-                variant="primary"
-                onClick={handleBookDelivery}
-                disabled={bookingLoading}
-                className="w-full h-10 text-xs font-bold gap-2 cursor-pointer shadow-md shadow-rose-950/40"
-              >
-                {bookingLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-3.5 h-3.5" />
-                )}
-                Book Courier ({formatCurrency(calcResult.payment_amount)})
-              </Button>
+            <div className="pt-2.5 mt-2 border-t border-zinc-200/70">
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-zinc-400 block mb-1">
+                Courier Matter String
+              </span>
+              <p className="font-mono text-[11px] text-zinc-600 line-clamp-2">{compiledMatter}</p>
             </div>
-          ) : (
-            <div className="py-4 text-center space-y-2">
-              <Navigation className="w-6 h-6 text-zinc-600 mx-auto" />
-              <p className="text-[11px] text-zinc-500">
-                Enter address on left to get live fare quote
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCalculate}
-                disabled={calcLoading || !dropAddress}
-                className="h-8 text-xs gap-1.5 cursor-pointer"
-              >
-                <Calculator className="w-3 h-3" />
-                Calculate Rate
-              </Button>
-            </div>
-          )}
-
-          {/* Quick Notice */}
-          <div className="rounded-md border border-zinc-800/80 bg-zinc-950/60 p-2 text-[10px] text-zinc-500 leading-tight">
-            Orders dispatch immediately to Borzo couriers near Kasarvadavali.
           </div>
+
+          <Input
+            placeholder="Packaging note (e.g. extra dip, keep upright)"
+            value={customNotes}
+            onChange={(e) => setCustomNotes(e.target.value)}
+            className="h-8 text-xs"
+          />
         </Card>
       </div>
     </div>

@@ -2,24 +2,24 @@
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    --background: 220 14% 96%;
+    --foreground: 220 13% 9%;
   }
 
   body {
-    background-color: #09090b;
-    color: #fafafa;
+    background-color: #f3f4f6;
+    color: #111214;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
   }
 
   ::selection {
-    background-color: rgba(225, 29, 72, 0.25);
-    color: #fff;
+    background-color: rgba(0, 102, 255, 0.16);
+    color: #0052d4;
   }
 }
 
-/* Crisp custom scrollbar */
+/* Crisp custom scrollbar for light bento canvas */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -28,11 +28,11 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(17, 18, 20, 0.14);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(17, 18, 20, 0.28);
 }
 
 .tabular-nums {
