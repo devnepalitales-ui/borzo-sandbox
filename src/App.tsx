@@ -1,14 +1,8 @@
 import React, { useState, useEffect } from "react";
 import {
-  Send,
-  Calculator,
-  Package,
-  Phone,
-  ChevronRight,
   Menu,
   X,
-  Store,
-  Flame,
+  Phone,
 } from "lucide-react";
 import { Badge } from "./components/ui/badge";
 import { CreateOrder } from "./components/CreateOrder";
@@ -39,20 +33,16 @@ export default function App() {
       id: "create" as Tab,
       label: "Dispatch & Book",
       description: "Book courier from kitchen",
-      icon: Send,
-      badge: "Quick Book",
     },
     {
       id: "orders" as Tab,
       label: "Deliveries History",
       description: "Track live couriers & orders",
-      icon: Package,
     },
     {
       id: "calculator" as Tab,
       label: "Fare Calculator",
       description: "Quick quote & distance test",
-      icon: Calculator,
     },
   ];
 
@@ -89,9 +79,8 @@ export default function App() {
           <div className="p-5 border-b border-zinc-800/80">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="font-bold text-base text-zinc-100 tracking-tight flex items-center gap-1.5">
+                <h2 className="font-bold text-base text-zinc-100 tracking-tight">
                   Nepali Tales
-                  <Flame className="w-4 h-4 text-rose-500" />
                 </h2>
                 <p className="text-xs text-zinc-400 mt-0.5">Borzo Dispatcher</p>
               </div>
@@ -115,7 +104,6 @@ export default function App() {
             </div>
 
             {navigationItems.map((item) => {
-              const Icon = item.icon;
               const isActive = activeTab === item.id;
               return (
                 <button
@@ -124,42 +112,23 @@ export default function App() {
                     setActiveTab(item.id);
                     setMobileMenuOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-left transition-all cursor-pointer group ${
+                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-left transition-all cursor-pointer ${
                     isActive
-                      ? "bg-rose-500/10 border border-rose-500/30 text-rose-300 shadow-sm shadow-rose-950/20"
-                      : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/70 border border-transparent"
+                      ? "bg-zinc-900/90 border border-zinc-800 text-zinc-100 shadow-sm"
+                      : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/40 border border-transparent"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
-                        isActive
-                          ? "bg-rose-500/20 text-rose-400"
-                          : "bg-zinc-900 border border-zinc-800 text-zinc-400 group-hover:text-zinc-200 group-hover:border-zinc-700"
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
+                  <div>
+                    <div className={`text-xs font-semibold ${isActive ? "text-zinc-100" : "text-zinc-300"}`}>
+                      {item.label}
                     </div>
-                    <div>
-                      <div className={`text-xs font-semibold ${isActive ? "text-rose-200" : "text-zinc-200"}`}>
-                        {item.label}
-                      </div>
-                      <div className="text-[10px] text-zinc-500 leading-tight mt-0.5">
-                        {item.description}
-                      </div>
+                    <div className="text-[10px] text-zinc-500 leading-tight mt-0.5">
+                      {item.description}
                     </div>
                   </div>
 
-                  {item.badge ? (
-                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono">
-                      {item.badge}
-                    </span>
-                  ) : (
-                    <ChevronRight
-                      className={`w-3.5 h-3.5 transition-transform ${
-                        isActive ? "text-rose-400 translate-x-0.5" : "text-zinc-600 group-hover:text-zinc-400"
-                      }`}
-                    />
+                  {isActive && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
                   )}
                 </button>
               );
@@ -167,15 +136,14 @@ export default function App() {
           </nav>
 
           {/* Kitchen Pickup Point Card */}
-          <div className="p-3 mx-3 mb-3 rounded-xl bg-zinc-900/50 border border-zinc-800/80">
-            <div className="flex items-center gap-2 mb-2">
-              <Store className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span className="text-[11px] font-semibold text-zinc-300">Kitchen Pickup Point</span>
+          <div className="p-3.5 mx-3 mb-3 rounded-xl bg-zinc-900/40 border border-zinc-800/70">
+            <div className="text-[11px] font-semibold text-zinc-300 mb-1">
+              Kitchen Pickup Point
             </div>
             <p className="text-[11px] text-zinc-400 leading-relaxed">
               Metropolis Aquaris Phase 2, Ghodbunder Rd, Kasarvadavali, Thane West 400615
             </p>
-            <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-zinc-800/60 text-[10px] text-zinc-400 font-mono">
+            <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-zinc-800/60 text-[10px] text-zinc-400 font-mono">
               <Phone className="w-3 h-3 text-zinc-500 shrink-0" />
               <span>+91 75850 80407 (Kitchen)</span>
             </div>
