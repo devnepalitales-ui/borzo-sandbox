@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Send,
   MapPin,
   Phone,
   User,
-  Package,
   AlertCircle,
   CheckCircle2,
   ExternalLink,
@@ -14,10 +13,12 @@ import {
   Share2,
   Navigation,
   ShieldAlert,
-  Clock,
   Check,
   RotateCcw,
   Bike,
+  Plus,
+  Minus,
+  UtensilsCrossed,
   Sparkles,
 } from "lucide-react";
 import { Button } from "./ui/button";
@@ -26,10 +27,38 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/
 import { Input } from "./ui/input";
 import { formatCurrency, formatPhone } from "../lib/utils";
 
+// Official Nepali Tales Menu Catalog (From Nepali Tales Admin)
+interface MenuItem {
+  id: string;
+  name: string;
+  category: "Jhol Momo" | "Momo" | "Shaphaley" | "Add-on";
+  type?: "Veg" | "Non-Veg";
+  portion?: string;
+  price: number;
+}
+
+const PRODUCTS: MenuItem[] = [
+  { id: "p1", name: "Chicken Jhol Momo", category: "Jhol Momo", type: "Non-Veg", portion: "6 pcs", price: 249 },
+  { id: "p2", name: "Veg Jhol momo", category: "Jhol Momo", type: "Veg", portion: "6 pcs", price: 239 },
+  { id: "p3", name: "Chicken Kothey Momo", category: "Momo", type: "Non-Veg", portion: "6 pcs", price: 229 },
+  { id: "p4", name: "Chicken Steamed Momo", category: "Momo", type: "Non-Veg", portion: "6 pcs", price: 210 },
+  { id: "p5", name: "Veg Fried Momo", category: "Momo", type: "Veg", portion: "6 pcs", price: 229 },
+  { id: "p6", name: "Veg Kothey Momo", category: "Momo", type: "Veg", portion: "6 pcs", price: 219 },
+  { id: "p7", name: "Veg Steamed Momo", category: "Momo", type: "Veg", portion: "6 pcs", price: 189 },
+  { id: "p8", name: "Chicken Shaphaley", category: "Shaphaley", type: "Non-Veg", portion: "2 pcs", price: 239 },
+  { id: "p9", name: "Veg Shaphaley", category: "Shaphaley", type: "Veg", portion: "2 pcs", price: 210 },
+];
+
+const ADDONS: MenuItem[] = [
+  { id: "a1", name: "Chilli Oil", category: "Add-on", price: 50 },
+  { id: "a2", name: "Red Spicy Chutney", category: "Add-on", price: 20 },
+  { id: "a3", name: "Peanut Chutney", category: "Add-on", price: 20 },
+  { id: "a4", name: "Jhol", category: "Add-on", price: 50 },
+];
+
 interface ConfigData {
   borzo: { env: string; baseUrl: string; tokenMasked: string; clientId: string };
   kitchen: { address: string; phone: string; name: string };
-  sampleDestinations: Array<{ label: string; address: string; phone: string; name: string }>;
 }
 
 export function CreateOrder({
@@ -43,7 +72,7 @@ export function CreateOrder({
   const [pickupAddress, setPickupAddress] = useState("");
   const [pickupPhone, setPickupPhone] = useState("");
 
-  // Recipient (Drop)
+  // Recipient (Drop) - Clean empty defaults as requested
   const [dropName, setDropName] = useState("");
   const [dropPhone, setDropPhone] = useState("");
   const [dropAddress, setDropAddress] = useState("");
@@ -52,10 +81,10 @@ export function CreateOrder({
   const [floorNumber, setFloorNumber] = useState("");
   const [dropNote, setDropNote] = useState("");
 
-  // Package & Order Details
-  const [matter, setMatter] = useState("Authentic Nepali Food (Hot Momos & Jhol Thukpa)");
+  // Selected Food Items Quantities (item.id -> quantity)
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [customNotes, setCustomNotes] = useState("");
   const [clientOrderId, setClientOrderId] = useState(`NT-${Math.floor(1000 + Math.random() * 9000)}`);
-  const [weightKg, setWeightKg] = useState(1);
 
   // Live Calculation State
   const [calcLoading, setCalcLoading] = useState(false);
@@ -76,12 +105,64 @@ export function CreateOrder({
       setPickupAddress(config.kitchen.address);
       setPickupPhone(config.kitchen.phone);
     }
-    if (config?.sampleDestinations?.[0] && !dropAddress) {
-      setDropAddress(config.sampleDestinations[0].address);
-      setDropPhone(config.sampleDestinations[0].phone);
-      setDropName(config.sampleDestinations[0].name);
-    }
   }, [config]);
+
+  // Handle Menu Item Quantity Changes
+  const updateQuantity = (id: string, delta: number) => {
+    setQuantities((prev) => {
+      const current = prev[id] || 0;
+      const next = Math.max(0, current + delta);
+      const updated = { ...prev };
+      if (next === 0) {
+        delete updated[id];
+      } else {
+        updated[id] = next;
+      }
+      return updated;
+    });
+  };
+
+  // Compute selected items breakdown, subtotal, and matter string
+  const selectedItems = useMemo(() => {
+    const list: Array<{ item: MenuItem; count: number; total: number }> = [];
+    const allItems = [...PRODUCTS, ...ADDONS];
+    for (const item of allItems) {
+      const count = quantities[item.id] || 0;
+      if (count > 0) {
+        list.push({ item, count, total: count * item.price });
+      }
+    }
+    return list;
+  }, [quantities]);
+
+  const foodSubtotal = useMemo(() => {
+    return selectedItems.reduce((acc, curr) => acc + curr.total, 0);
+  }, [selectedItems]);
+
+  const totalItemCount = useMemo(() => {
+    return selectedItems.reduce((acc, curr) => acc + curr.count, 0);
+  }, [selectedItems]);
+
+  // Dynamically constructed matter string for Borzo courier
+  const compiledMatter = useMemo(() => {
+    if (selectedItems.length === 0) {
+      return customNotes.trim() || "Food Order - Nepali Tales";
+    }
+    const itemStrings = selectedItems.map(
+      (si) => `${si.count}x ${si.item.name}`
+    );
+    let str = itemStrings.join(", ");
+    if (customNotes.trim()) {
+      str += ` (${customNotes.trim()})`;
+    }
+    return str;
+  }, [selectedItems, customNotes]);
+
+  // Estimated weight based on portions (approx 0.35 kg per item)
+  const weightKg = useMemo(() => {
+    if (totalItemCount === 0) return 1;
+    return Math.max(1, Math.min(20, Math.ceil(totalItemCount * 0.4)));
+  }, [totalItemCount]);
 
   // Clean phone number to 91XXXXXXXXXX
   const normalizePhone = (num: string) => {
@@ -105,9 +186,9 @@ export function CreateOrder({
 
     const payload = {
       type: "standard",
-      matter,
+      matter: compiledMatter,
       vehicle_type_id: 8, // motorbike
-      total_weight_kg: Number(weightKg) || 1,
+      total_weight_kg: weightKg,
       points: [
         {
           address: pickupAddress,
@@ -148,10 +229,7 @@ export function CreateOrder({
       return;
     }
 
-    const isProd = config?.borzo?.env === "production";
-    const confirmPrompt = isProd
-      ? `Confirm Delivery Booking:\n\n• Recipient: ${dropName} (${dropPhone})\n• Address: ${dropAddress}\n• Estimated Cost: ₹${calcResult?.payment_amount || "Calculating..."}\n\nThis will book a REAL Borzo bike courier. Proceed?`
-      : `Book test delivery to ${dropName}?`;
+    const confirmPrompt = `Confirm Delivery Booking:\n\n• Recipient: ${dropName} (${dropPhone})\n• Address: ${dropAddress}\n• Food Items (${totalItemCount}): ${compiledMatter}\n• Food Value: ₹${foodSubtotal}\n• Delivery Fee: ₹${calcResult?.payment_amount || "Calculating..."}\n\nThis will dispatch a real Borzo motorbike courier to Nepali Tales kitchen. Proceed?`;
 
     if (!confirm(confirmPrompt)) return;
 
@@ -164,9 +242,9 @@ export function CreateOrder({
 
     const payload = {
       type: "standard",
-      matter,
+      matter: compiledMatter,
       vehicle_type_id: 8, // motorbike
-      total_weight_kg: Number(weightKg) || 1,
+      total_weight_kg: weightKg,
       points: [
         {
           address: pickupAddress,
@@ -233,6 +311,8 @@ export function CreateOrder({
     setBuildingNumber("");
     setFloorNumber("");
     setDropNote("");
+    setQuantities({});
+    setCustomNotes("");
   };
 
   const trackingUrl =
@@ -254,10 +334,10 @@ export function CreateOrder({
   };
 
   const getWhatsAppMessage = () => {
-    return `Namaste ${dropName || "there"}! 🥟 Your authentic Nepali food order from Nepali Tales is freshly prepared and out for delivery with Borzo courier. 🛵\n\nTrack your courier live here:\n${trackingUrl || ""}\n\nEnjoy your meal!`;
+    const itemsText = selectedItems.length > 0 ? `\nItems: ${compiledMatter}` : "";
+    return `Namaste ${dropName || "there"}! 🥟 Your authentic Nepali food order from Nepali Tales is freshly prepared and out for delivery with Borzo courier. 🛵${itemsText}\n\nTrack your courier live here:\n${trackingUrl || ""}\n\nEnjoy your meal!`;
   };
 
-  const isProduction = config?.borzo?.env === "production";
   const distanceKm = calcResult?.points?.[1]?.previous_point_driving_distance_meters
     ? (calcResult.points[1].previous_point_driving_distance_meters / 1000).toFixed(1)
     : null;
@@ -274,7 +354,7 @@ export function CreateOrder({
             </Badge>
           </h2>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Send food packages to friends, family, or customers with automated pricing, address geocoding, and live tracking.
+            Select authentic Nepali food items, enter recipient details, check live Borzo rates, and book courier.
           </p>
         </div>
 
@@ -402,7 +482,7 @@ export function CreateOrder({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Form Details */}
         <div className="lg:col-span-7 space-y-5">
-          {/* Destination Form Card */}
+          {/* Step 1: Destination Form Card */}
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -410,39 +490,8 @@ export function CreateOrder({
                   <CardTitle>Delivery Destination</CardTitle>
                   <CardDescription>Enter recipient contact and address details.</CardDescription>
                 </div>
-                <Badge variant="outline" className="text-zinc-400">Step 1</Badge>
+                <Badge variant="outline" className="text-zinc-400 font-mono">Step 1</Badge>
               </div>
-
-              {/* Destination Presets */}
-              {config?.sampleDestinations && (
-                <div className="pt-2">
-                  <span className="text-[11px] font-medium text-zinc-400 block mb-1.5">Quick Presets:</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {config.sampleDestinations.map((preset, idx) => {
-                      const isActive = dropAddress === preset.address;
-                      return (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => {
-                            setDropAddress(preset.address);
-                            setDropPhone(preset.phone);
-                            setDropName(preset.name);
-                            handleCalculate(preset.address);
-                          }}
-                          className={`rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer ${
-                            isActive
-                              ? "border-rose-500/60 bg-rose-500/10 text-rose-300"
-                              : "border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
-                          }`}
-                        >
-                          {preset.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </CardHeader>
 
             <CardContent className="space-y-4">
@@ -469,7 +518,7 @@ export function CreateOrder({
                   <div className="relative">
                     <Phone className="h-3.5 w-3.5 absolute left-3 top-2.5 text-zinc-500" />
                     <Input
-                      placeholder="e.g. 9820000001 or 919820000001"
+                      placeholder="e.g. 9820000001"
                       value={dropPhone}
                       onChange={(e) => setDropPhone(e.target.value)}
                       className="pl-8 font-mono"
@@ -505,7 +554,7 @@ export function CreateOrder({
                   />
                 </div>
                 <p className="text-[11px] text-zinc-500">
-                  Google Maps will geocode this address to locate your courier on the road.
+                  Borzo geocodes this address to route your motorbike courier.
                 </p>
               </div>
 
@@ -540,7 +589,7 @@ export function CreateOrder({
               <div className="space-y-1">
                 <label className="text-[11px] font-medium text-zinc-400">Instructions for Driver</label>
                 <Input
-                  placeholder="e.g. Please ring doorbell / Leave at security gate if busy"
+                  placeholder="e.g. Ring bell / Leave at security gate"
                   value={dropNote}
                   onChange={(e) => setDropNote(e.target.value)}
                 />
@@ -548,36 +597,195 @@ export function CreateOrder({
             </CardContent>
           </Card>
 
-          {/* Package Items Card */}
+          {/* Step 2: Food Items & Menu Selection Card */}
           <Card>
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-3 border-b border-zinc-800/80">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Food Items & Package</CardTitle>
-                  <CardDescription>Contents displayed to the courier.</CardDescription>
+                  <CardTitle className="flex items-center gap-2">
+                    <UtensilsCrossed className="w-4 h-4 text-rose-500" />
+                    Food Items & Add-ons
+                  </CardTitle>
+                  <CardDescription>Select dishes and extras to include in this delivery.</CardDescription>
                 </div>
-                <Badge variant="outline" className="text-zinc-400">Step 2</Badge>
+                <div className="flex items-center gap-2">
+                  {totalItemCount > 0 && (
+                    <Badge variant="secondary" className="font-mono text-xs">
+                      {totalItemCount} {totalItemCount === 1 ? "item" : "items"} (₹{foodSubtotal})
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="text-zinc-400 font-mono">Step 2</Badge>
+                </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2 space-y-1">
-                  <label className="text-[11px] font-medium text-zinc-300">Items Description</label>
-                  <Input
-                    value={matter}
-                    onChange={(e) => setMatter(e.target.value)}
-                    placeholder="e.g. Nepali Tales Food (Hot Momos & Noodles)"
-                  />
+
+            <CardContent className="p-4 space-y-6">
+              {/* Products Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                  <span>Menu Products ({PRODUCTS.length})</span>
+                  <span className="text-[11px] font-normal normal-case text-zinc-500">6 pcs portion</span>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-medium text-zinc-300">Total Weight (kg)</label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="20"
-                    value={weightKg}
-                    onChange={(e) => setWeightKg(Number(e.target.value))}
-                  />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {PRODUCTS.map((prod) => {
+                    const qty = quantities[prod.id] || 0;
+                    const isVeg = prod.type === "Veg";
+                    return (
+                      <div
+                        key={prod.id}
+                        className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                          qty > 0
+                            ? "border-rose-500/40 bg-rose-500/5 text-zinc-100"
+                            : "border-zinc-800/80 bg-zinc-950/50 hover:border-zinc-700/80"
+                        }`}
+                      >
+                        <div className="space-y-0.5 pr-2 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`h-2 w-2 rounded-full shrink-0 ${
+                                isVeg ? "bg-emerald-500" : "bg-rose-500"
+                              }`}
+                            />
+                            <span className="text-xs font-semibold text-zinc-200 truncate block">
+                              {prod.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-400">
+                            <span className="font-semibold text-zinc-100">₹{prod.price}</span>
+                            <span className="text-zinc-600">&middot;</span>
+                            <span className="text-zinc-500">{prod.portion}</span>
+                          </div>
+                        </div>
+
+                        {/* Quantity Counter */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {qty > 0 ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(prod.id, -1)}
+                                className="h-7 w-7 rounded-md bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 flex items-center justify-center cursor-pointer transition-colors"
+                              >
+                                <Minus className="w-3.5 h-3.5" />
+                              </button>
+                              <span className="w-6 text-center text-xs font-bold font-mono text-white">
+                                {qty}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(prod.id, 1)}
+                                className="h-7 w-7 rounded-md bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center cursor-pointer transition-colors"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(prod.id, 1)}
+                              className="h-7 px-2.5 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-300 text-xs font-medium flex items-center gap-1 cursor-pointer transition-colors"
+                            >
+                              <Plus className="w-3 h-3 text-zinc-400" />
+                              Add
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Add-ons Section */}
+              <div className="space-y-3 pt-3 border-t border-zinc-800/80">
+                <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                  Chutneys & Add-ons ({ADDONS.length})
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {ADDONS.map((addon) => {
+                    const qty = quantities[addon.id] || 0;
+                    return (
+                      <div
+                        key={addon.id}
+                        className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                          qty > 0
+                            ? "border-rose-500/40 bg-rose-500/5 text-zinc-100"
+                            : "border-zinc-800/80 bg-zinc-950/50 hover:border-zinc-700/80"
+                        }`}
+                      >
+                        <div className="space-y-0.5 pr-2 min-w-0">
+                          <span className="text-xs font-semibold text-zinc-200 truncate block">
+                            {addon.name}
+                          </span>
+                          <span className="text-[11px] font-mono font-semibold text-zinc-100 block">
+                            ₹{addon.price}
+                          </span>
+                        </div>
+
+                        {/* Quantity Counter */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {qty > 0 ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(addon.id, -1)}
+                                className="h-7 w-7 rounded-md bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 flex items-center justify-center cursor-pointer transition-colors"
+                              >
+                                <Minus className="w-3.5 h-3.5" />
+                              </button>
+                              <span className="w-6 text-center text-xs font-bold font-mono text-white">
+                                {qty}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(addon.id, 1)}
+                                className="h-7 w-7 rounded-md bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center cursor-pointer transition-colors"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(addon.id, 1)}
+                              className="h-7 px-2.5 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-300 text-xs font-medium flex items-center gap-1 cursor-pointer transition-colors"
+                            >
+                              <Plus className="w-3 h-3 text-zinc-400" />
+                              Add
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Package Notes / Custom Items */}
+              <div className="space-y-1.5 pt-2 border-t border-zinc-800/80">
+                <label className="text-[11px] font-medium text-zinc-300 flex items-center justify-between">
+                  <span>Additional Package Notes & Special Instructions</span>
+                  <span className="text-[10px] text-zinc-500">Optional</span>
+                </label>
+                <Input
+                  placeholder="e.g. Pack extra tissues / Keep upright / Hot food parcel"
+                  value={customNotes}
+                  onChange={(e) => setCustomNotes(e.target.value)}
+                />
+              </div>
+
+              {/* Compiled Borzo Matter Preview */}
+              <div className="rounded-lg bg-zinc-950 p-3 border border-zinc-800/60 text-xs space-y-1">
+                <span className="text-[11px] text-zinc-500 font-medium block">
+                  Courier Matter Description (Auto-generated for Borzo):
+                </span>
+                <p className="font-mono text-xs text-zinc-300 leading-relaxed">
+                  {compiledMatter}
+                </p>
+                <div className="text-[10px] text-zinc-500 font-mono pt-1">
+                  Estimated Weight: {weightKg} kg &middot; Standard Motorbike
                 </div>
               </div>
             </CardContent>
@@ -593,13 +801,33 @@ export function CreateOrder({
                   <Bike className="h-4 w-4 text-rose-500" />
                   Live Fare Quote
                 </CardTitle>
-                <Badge variant={isProduction ? "destructive" : "warning"}>
-                  {isProduction ? "Live Borzo Rates" : "Test Estimate"}
+                <Badge variant="destructive">
+                  Live Borzo Rates
                 </Badge>
               </div>
             </CardHeader>
 
             <CardContent className="p-5 space-y-5">
+              {/* Selected Food Cart Preview in Quote Card */}
+              {selectedItems.length > 0 && (
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3.5 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-semibold text-zinc-300 pb-1.5 border-b border-zinc-800/80">
+                    <span>Order Items ({totalItemCount})</span>
+                    <span className="font-mono text-rose-400">₹{foodSubtotal}</span>
+                  </div>
+                  <div className="space-y-1 max-h-36 overflow-y-auto text-xs pr-1">
+                    {selectedItems.map((si) => (
+                      <div key={si.item.id} className="flex items-center justify-between text-zinc-400">
+                        <span className="truncate pr-2">
+                          {si.count}x {si.item.name}
+                        </span>
+                        <span className="font-mono text-zinc-300 shrink-0">₹{si.total}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {calcLoading ? (
                 <div className="py-10 text-center space-y-2">
                   <Loader2 className="h-6 w-6 animate-spin text-rose-500 mx-auto" />
@@ -609,7 +837,7 @@ export function CreateOrder({
                 <div className="space-y-4">
                   {/* Large Price Block */}
                   <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4 text-center">
-                    <span className="text-[11px] text-zinc-400 block mb-1">Total Delivery Fee</span>
+                    <span className="text-[11px] text-zinc-400 block mb-1">Borzo Delivery Fee</span>
                     <div className="text-3xl font-black text-white font-mono tracking-tight tabular-nums">
                       {formatCurrency(calcResult.payment_amount)}
                     </div>
@@ -627,6 +855,12 @@ export function CreateOrder({
 
                   {/* Key Metrics */}
                   <div className="space-y-2 text-xs divide-y divide-zinc-800/80 pt-1">
+                    {foodSubtotal > 0 && (
+                      <div className="flex justify-between py-1.5 text-zinc-300">
+                        <span className="text-zinc-400">Food Items Subtotal</span>
+                        <span className="font-mono font-medium text-white">₹{foodSubtotal}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between py-1.5 text-zinc-300">
                       <span className="text-zinc-400">Base Delivery Charge</span>
                       <span className="font-mono font-medium text-white">
@@ -654,20 +888,18 @@ export function CreateOrder({
 
                   {/* Primary Dispatch Action */}
                   <Button
-                    variant={isProduction ? "primary" : "default"}
+                    variant="primary"
                     size="lg"
                     onClick={handleBookDelivery}
                     disabled={bookingLoading}
-                    className="w-full h-11 text-xs font-bold gap-2"
+                    className="w-full h-11 text-xs font-bold gap-2 cursor-pointer"
                   >
                     {bookingLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Send className="h-4 w-4" />
                     )}
-                    {isProduction
-                      ? `Book Borzo Courier (${formatCurrency(calcResult.payment_amount)})`
-                      : "Book Test Courier"}
+                    Book Borzo Courier ({formatCurrency(calcResult.payment_amount)})
                   </Button>
                 </div>
               ) : (
@@ -684,7 +916,7 @@ export function CreateOrder({
                     size="sm"
                     onClick={() => handleCalculate()}
                     disabled={calcLoading || !dropAddress}
-                    className="gap-1.5 text-xs"
+                    className="gap-1.5 text-xs cursor-pointer"
                   >
                     <Calculator className="h-3.5 w-3.5" />
                     Calculate Rate
@@ -701,7 +933,7 @@ export function CreateOrder({
               Live Courier Note:
             </span>
             <p className="leading-relaxed">
-              When you click <strong>Book Courier</strong> in Live Production mode, Borzo summons a motorbike courier to Nepali Tales Kitchen in Kasarvadavali. You can monitor courier arrival live or cancel anytime from the <strong>Deliveries History</strong> tab.
+              When you click <strong>Book Courier</strong>, Borzo summons a motorbike courier to Nepali Tales Kitchen in Kasarvadavali. You can monitor courier arrival live or cancel anytime from the <strong>Deliveries History</strong> tab.
             </p>
           </div>
         </div>
