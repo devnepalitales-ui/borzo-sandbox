@@ -1,16 +1,33 @@
-import React, { useState, useEffect } from "react";
-import { Menu, X, ArrowUpRight, ChevronRight } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
 import { CreateOrder } from "./components/CreateOrder";
 import { PriceCalculator } from "./components/PriceCalculator";
 import { OrdersList } from "./components/OrdersList";
 
 type Tab = "create" | "orders" | "calculator";
 
+const SIDEBAR_STORAGE_KEY = "borzo-sidebar-open";
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>("create");
   const [config, setConfig] = useState<any>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY);
+      return saved === null ? true : saved === "true";
+    } catch {
+      return true;
+    }
+  });
+  const [isDesktop, setIsDesktop] = useState<boolean>(() =>
+    typeof window !== "undefined" ? window.matchMedia("(min-width: 768px)").matches : true
+  );
+
+  const mobileTriggerRef = useRef<HTMLButtonElement>(null);
+  const desktopExpandRef = useRef<HTMLButtonElement>(null);
+  const drawerCloseRef = useRef<HTMLButtonElement>(null);
+  const mainContainerRef = useRef<HTMLDivElement>(null);
 
   const fetchConfig = () => {
     fetch("/api/config")
@@ -22,6 +39,50 @@ export default function App() {
   useEffect(() => {
     fetchConfig();
   }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 768px)");
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsDesktop(e.matches);
+      if (e.matches) {
+        setMobileMenuOpen(false);
+      }
+    };
+    setIsDesktop(media.matches);
+    media.addEventListener("change", handleChange);
+    return () => media.removeEventListener("change", handleChange);
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(desktopSidebarOpen));
+    } catch {
+      // Ignore storage failures
+    }
+  }, [desktopSidebarOpen]);
+
+  // Manage mobile drawer modality: inert main workspace, Escape key, and focus handling
+  useEffect(() => {
+    const mainEl = mainContainerRef.current;
+    if (!isDesktop && mobileMenuOpen) {
+      if (mainEl) mainEl.inert = true;
+      drawerCloseRef.current?.focus();
+
+      const onKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          setMobileMenuOpen(false);
+          mobileTriggerRef.current?.focus();
+        }
+      };
+      document.addEventListener("keydown", onKeyDown);
+      return () => {
+        if (mainEl) mainEl.inert = false;
+        document.removeEventListener("keydown", onKeyDown);
+      };
+    } else if (mainEl) {
+      mainEl.inert = false;
+    }
+  }, [isDesktop, mobileMenuOpen]);
 
   const navigationItems = [
     { id: "create" as Tab, label: "Dispatch & Book" },
@@ -35,111 +96,212 @@ export default function App() {
     calculator: { title: "Fare Calculator", crumb: "Estimator › Distance & Vehicle Quotes" },
   }[activeTab];
 
+  const isSidebarCollapsedOnDesktop = isDesktop && !desktopSidebarOpen;
+
+  const handleToggleDesktopSidebar = () => {
+    setDesktopSidebarOpen((prev) => {
+      const next = !prev;
+      if (!next) {
+        requestAnimationFrame(() => desktopExpandRef.current?.focus());
+      }
+      return next;
+    });
+  };
+
+  const handleCloseMobileDrawer = () => {
+    setMobileMenuOpen(false);
+    requestAnimationFrame(() => mobileTriggerRef.current?.focus());
+  };
+
+  const kitchenPhone = config?.kitchen?.phone || "917585080407";
+  const formattedKitchenPhone =
+    kitchenPhone.length === 12 && kitchenPhone.startsWith("91")
+      ? `+91 ${kitchenPhone.slice(2, 7)} ${kitchenPhone.slice(7)}`
+      : "+91 75850 80407";
+
   return (
-    <div className="min-h-screen bg-[#F3F4F6] text-[#111214] flex flex-col md:flex-row antialiased">
+    <div className="min-h-dvh bg-[#F3F4F6] text-[#111214] flex flex-col md:flex-row antialiased">
       {/* Mobile Top Header */}
-      <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-black/[0.06] sticky top-0 z-50">
-        <div>
+      <div className="md:hidden flex items-center justify-between gap-3 px-4 py-3 bg-white border-b border-black/[0.06] sticky top-0 z-30">
+        <div className="min-w-0">
           <div className="font-bold text-sm text-[#111214] flex items-center gap-2">
-            <span>Nepali Tales</span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="truncate">Nepali Tales</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 shrink-0">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               Live
             </span>
           </div>
-          <div className="text-[11px] text-zinc-500">Borzo Dispatcher</div>
+          <div className="text-[11px] text-zinc-500 mt-0.5">Borzo Dispatcher</div>
         </div>
+
         <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 rounded-full bg-[#F3F4F6] text-[#111214] hover:bg-zinc-200 cursor-pointer"
+          ref={mobileTriggerRef}
+          type="button"
+          onClick={() => setMobileMenuOpen((prev) => !prev)}
+          aria-expanded={mobileMenuOpen}
+          aria-controls="dispatch-sidebar"
+          className="h-9 px-4 rounded-full bg-[#F3F4F6] hover:bg-zinc-200/80 text-xs font-semibold text-[#111214] transition-colors cursor-pointer shrink-0"
         >
-          {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          {mobileMenuOpen ? "Close" : "Menu"}
         </button>
       </div>
 
-      {/* Left Sidebar (Clean Light Bento Shell, No Icons on Tabs, No NT Logo) */}
+      {/* Mobile Drawer Backdrop */}
+      {!isDesktop && mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] md:hidden"
+          onClick={handleCloseMobileDrawer}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Left Collapsible Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-black/[0.05] flex flex-col justify-between p-5 transition-transform duration-200 ease-in-out md:static md:translate-x-0 ${
-          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        id="dispatch-sidebar"
+        role={!isDesktop && mobileMenuOpen ? "dialog" : undefined}
+        aria-modal={!isDesktop && mobileMenuOpen ? true : undefined}
+        aria-label="Sidebar navigation"
+        aria-hidden={isSidebarCollapsedOnDesktop || (!isDesktop && !mobileMenuOpen)}
+        inert={isSidebarCollapsedOnDesktop || (!isDesktop && !mobileMenuOpen) ? true : undefined}
+        className={[
+          "fixed inset-y-0 left-0 z-50 bg-white border-black/[0.06] transition-[width,transform,opacity] duration-200 ease-out overflow-clip shrink-0",
+          "md:sticky md:top-0 md:z-20 md:h-dvh",
+          isDesktop
+            ? desktopSidebarOpen
+              ? "w-[272px] border-r opacity-100 translate-x-0"
+              : "w-0 border-r-0 opacity-0 pointer-events-none"
+            : mobileMenuOpen
+              ? "w-[280px] max-w-[85dvw] border-r translate-x-0 shadow-2xl"
+              : "w-[280px] -translate-x-full pointer-events-none",
+        ].join(" ")}
       >
-        <div className="space-y-6">
-          {/* Greeting / Brand Header */}
-          <div className="space-y-1 pt-1">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-zinc-500 tracking-tight">Nepali Tales</span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Live
-              </span>
+        <div className="w-[272px] md:w-[272px] h-full flex flex-col justify-between gap-6 px-4 py-5 overflow-y-auto overscroll-contain">
+          <div className="space-y-6">
+            {/* Brand Header + Collapse Control */}
+            <div className="px-3 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-xs font-semibold text-zinc-600 tracking-tight truncate">
+                    Nepali Tales
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 shrink-0">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    Live
+                  </span>
+                </div>
+
+                {isDesktop ? (
+                  <button
+                    type="button"
+                    onClick={handleToggleDesktopSidebar}
+                    aria-expanded={desktopSidebarOpen}
+                    aria-controls="dispatch-sidebar"
+                    aria-label="Collapse sidebar"
+                    className="h-7 px-2.5 rounded-full bg-[#F3F4F6] hover:bg-zinc-200/80 text-[11px] font-semibold text-zinc-600 hover:text-[#111214] transition-colors cursor-pointer shrink-0"
+                  >
+                    Hide
+                  </button>
+                ) : (
+                  <button
+                    ref={drawerCloseRef}
+                    type="button"
+                    onClick={handleCloseMobileDrawer}
+                    aria-label="Close navigation menu"
+                    className="h-8 px-3 rounded-full bg-[#F3F4F6] hover:bg-zinc-200/80 text-[11px] font-semibold text-[#111214] transition-colors cursor-pointer shrink-0"
+                  >
+                    Close
+                  </button>
+                )}
+              </div>
+
+              <div className="pt-1">
+                <h2 className="text-2xl font-bold tracking-tight text-[#111214] leading-[1.15]">
+                  Welcome Back,
+                  <br />
+                  Founder!
+                </h2>
+                <p className="text-xs text-zinc-500 mt-1.5">Borzo delivery dispatch console</p>
+              </div>
             </div>
-            <h2 className="text-2xl font-bold tracking-tight text-[#111214] leading-[1.15] pt-2">
-              Welcome Back,
-              <br />
-              Founder!
-            </h2>
-            <p className="text-xs text-zinc-500 pt-0.5">Borzo delivery dispatch console</p>
+
+            {/* Navigation Menu (Icon-free, aligned on consistent 12px inner inset) */}
+            <nav aria-label="Primary" className="space-y-1">
+              <div className="px-3 pb-2 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+                Menu
+              </div>
+
+              {navigationItems.map((item) => {
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setMobileMenuOpen(false);
+                    }}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`w-full flex items-center text-left px-3 py-2.5 rounded-full text-xs transition-colors cursor-pointer ${
+                      isActive
+                        ? "bg-[#111214] text-white font-semibold shadow-sm"
+                        : "text-zinc-600 hover:text-[#111214] hover:bg-[#F3F4F6] font-medium"
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
           </div>
 
-          {/* Navigation Menu (No Icons, No Quick Book Badge) */}
-          <nav className="space-y-1.5">
-            <div className="px-3 pb-1.5 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
-              Menu
+          {/* Bottom Cobalt Blue Pickup Card */}
+          <div className="rounded-[24px] bg-gradient-to-br from-[#1070FF] via-[#0066FF] to-[#004EC4] text-white p-5 space-y-3.5 shadow-sm mt-auto">
+            <div className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-semibold text-white">
+              Kitchen Pickup
             </div>
-
-            {navigationItems.map((item) => {
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-xs transition-all cursor-pointer ${
-                    isActive
-                      ? "bg-[#111214] text-white font-semibold shadow-sm"
-                      : "text-zinc-600 hover:text-[#111214] hover:bg-[#F3F4F6] font-medium"
-                  }`}
-                >
-                  <span>{item.label}</span>
-                  {isActive && <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Bottom Cobalt Blue Pickup Card (Matching Reference Accent Card) */}
-        <div className="rounded-[22px] bg-gradient-to-br from-[#1070FF] via-[#0066FF] to-[#004EC4] text-white p-4 space-y-3 shadow-sm mt-6">
-          <div className="inline-flex items-center rounded-full bg-white/20 backdrop-blur-sm px-2.5 py-0.5 text-[10px] font-semibold text-white">
-            Kitchen Pickup
-          </div>
-          <div className="space-y-1">
-            <div className="font-bold text-sm leading-tight">Thane West Kitchen</div>
-            <p className="text-[11px] text-blue-100/90 leading-relaxed">
-              Metropolis Aquaris Phase 2, Ghodbunder Rd, Kasarvadavali 400615
-            </p>
-          </div>
-          <div className="inline-flex items-center justify-between w-full rounded-full bg-[#111214] px-3 py-1.5 text-[11px] font-mono text-white">
-            <span>+91 75850 80407</span>
-            <span className="h-4 w-4 rounded-full bg-white/15 flex items-center justify-center">
-              <ArrowUpRight className="w-2.5 h-2.5 text-white" />
-            </span>
+            <div className="space-y-1">
+              <div className="font-bold text-sm leading-tight">Thane West Kitchen</div>
+              <p className="text-[11px] text-blue-50/95 leading-relaxed">
+                Metropolis Aquaris Phase 2, Ghodbunder Rd, Kasarvadavali 400615
+              </p>
+            </div>
+            <a
+              href={`tel:+${kitchenPhone.replace(/\D/g, "")}`}
+              className="flex items-center justify-between w-full rounded-full bg-[#111214] hover:bg-[#1E2024] px-3.5 py-2 text-[11px] font-mono text-white transition-colors"
+            >
+              <span>{formattedKitchenPhone}</span>
+              <span className="font-sans text-[10px] font-semibold text-zinc-300">Call</span>
+            </a>
           </div>
         </div>
       </aside>
 
       {/* Main Content Workspace */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        <div className="p-4 sm:p-6 lg:p-7 max-w-[1440px] w-full mx-auto space-y-5 flex-1">
+      <div ref={mainContainerRef} className="flex-1 flex flex-col min-w-0">
+        <div className="px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7 max-w-[1440px] w-full mx-auto space-y-6 flex-1">
           {/* Top Page Title & Status Pills Row */}
-          <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-[#111214] tracking-tight">
-                {activeMeta.title}
-              </h1>
-              <p className="text-xs text-zinc-500 mt-0.5">{activeMeta.crumb}</p>
+          <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5 min-w-0">
+              {isSidebarCollapsedOnDesktop && (
+                <button
+                  ref={desktopExpandRef}
+                  type="button"
+                  onClick={handleToggleDesktopSidebar}
+                  aria-expanded={false}
+                  aria-controls="dispatch-sidebar"
+                  aria-label="Expand sidebar"
+                  className="h-9 px-4 rounded-full bg-white border border-black/[0.06] hover:bg-zinc-50 text-xs font-semibold text-[#111214] shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors cursor-pointer shrink-0"
+                >
+                  Menu
+                </button>
+              )}
+
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl font-bold text-[#111214] tracking-tight">
+                  {activeMeta.title}
+                </h1>
+                <p className="text-xs text-zinc-500 mt-1">{activeMeta.crumb}</p>
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -149,11 +311,11 @@ export default function App() {
               </div>
 
               <div className="inline-flex items-center gap-1.5 rounded-full bg-white border border-black/[0.05] px-3.5 py-1.5 text-xs font-mono text-zinc-600 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-                <span className="text-zinc-400">Client:</span>
+                <span className="text-zinc-500">Client:</span>
                 <span className="font-semibold text-[#111214]">{config?.borzo?.clientId || "8138640"}</span>
               </div>
 
-              <div className="hidden sm:inline-flex items-center rounded-full bg-white border border-black/[0.05] px-3.5 py-1.5 text-xs font-mono text-zinc-500 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+              <div className="hidden sm:inline-flex items-center rounded-full bg-white border border-black/[0.05] px-3.5 py-1.5 text-xs font-mono text-zinc-600 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
                 test.nepalitales.com
               </div>
             </div>
