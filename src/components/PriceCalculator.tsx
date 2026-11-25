@@ -30,8 +30,9 @@ export function PriceCalculator({ config }: { config: ConfigData | null }) {
     }
   }, [config]);
 
-  const handleCalculate = async () => {
-    if (!dropAddress) {
+  const handleCalculate = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!dropAddress.trim()) {
       setError("Please enter a destination address.");
       return;
     }
@@ -94,84 +95,98 @@ export function PriceCalculator({ config }: { config: ConfigData | null }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         {/* Left White Bento Card: Parameters */}
-        <Card className="lg:col-span-7 p-6 flex flex-col justify-between gap-6">
-          <div className="space-y-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-base font-bold text-[#111214] tracking-tight">Delivery Parameters</h2>
-                <p className="text-xs text-zinc-500 mt-1">
-                  Test Borzo delivery rates for any Mumbai or Thane address
-                </p>
-              </div>
-              <Badge variant="secondary" className="shrink-0">
-                Standard v1.8
-              </Badge>
-            </div>
-
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label htmlFor="calc-drop-address" className="text-xs font-medium text-zinc-600 block">
-                  Destination Address
-                </label>
-                <textarea
-                  id="calc-drop-address"
-                  rows={3}
-                  value={dropAddress}
-                  onChange={(e) => setDropAddress(e.target.value)}
-                  placeholder="Enter landmark, society, or street address in Thane / Mumbai"
-                  className="w-full min-h-[88px] rounded-xl border border-zinc-200/90 bg-[#F7F8FA] px-3.5 py-2.5 text-xs text-[#111214] placeholder:text-zinc-500 focus-visible:outline-none focus-visible:bg-white focus-visible:border-[#0066FF] focus-visible:ring-2 focus-visible:ring-[#0066FF]/20 resize-none transition-colors"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label htmlFor="calc-vehicle-type" className="text-xs font-medium text-zinc-600 block">
-                    Vehicle Type
-                  </label>
-                  <select
-                    id="calc-vehicle-type"
-                    value={vehicleTypeId}
-                    onChange={(e) => setVehicleTypeId(Number(e.target.value))}
-                    className="w-full h-10 rounded-xl border border-zinc-200/90 bg-[#F7F8FA] px-3.5 text-xs text-[#111214] focus-visible:outline-none focus-visible:bg-white focus-visible:border-[#0066FF] focus-visible:ring-2 focus-visible:ring-[#0066FF]/20 transition-colors cursor-pointer"
-                  >
-                    <option value={8}>Motorbike (up to 20 kg)</option>
-                    <option value={7}>Walker / Bicycle (up to 10 kg)</option>
-                    <option value={1}>Car / Van (up to 200 kg)</option>
-                  </select>
+        <Card className="lg:col-span-7 p-6 flex flex-col">
+          <form onSubmit={handleCalculate} className="flex-1 flex flex-col justify-between gap-6">
+            <div className="space-y-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-base font-bold text-[#111214] tracking-tight">Delivery Parameters</h2>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Test Borzo delivery rates for any Mumbai or Thane address
+                  </p>
                 </div>
+                <Badge variant="secondary" className="shrink-0">
+                  Standard v1.8
+                </Badge>
+              </div>
 
-                <div className="space-y-1.5">
-                  <label htmlFor="calc-weight-kg" className="text-xs font-medium text-zinc-600 block">
-                    Package Weight (kg)
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="calc-drop-address" className="text-xs font-medium text-zinc-600 block">
+                    Destination Address
                   </label>
-                  <Input
-                    id="calc-weight-kg"
-                    type="number"
-                    min="1"
-                    max="20"
-                    value={weightKg}
-                    onChange={(e) => setWeightKg(Number(e.target.value))}
-                    className="h-10"
+                  <textarea
+                    id="calc-drop-address"
+                    name="dropAddress"
+                    rows={3}
+                    value={dropAddress}
+                    onChange={(e) => {
+                      setDropAddress(e.target.value);
+                      if (error) setError(null);
+                    }}
+                    placeholder="Enter landmark, society, or street address in Thane / Mumbai"
+                    className="w-full min-h-[88px] rounded-xl border border-zinc-200/90 bg-[#F7F8FA] px-3.5 py-3 text-xs text-[#111214] placeholder:text-zinc-500 focus-visible:outline-none focus-visible:bg-white focus-visible:border-[#0066FF] focus-visible:ring-2 focus-visible:ring-[#0066FF]/20 resize-none transition-colors"
                   />
                 </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label htmlFor="calc-vehicle-type" className="text-xs font-medium text-zinc-600 block">
+                      Vehicle Type
+                    </label>
+                    <div className="relative">
+                      <select
+                        id="calc-vehicle-type"
+                        name="vehicleTypeId"
+                        value={vehicleTypeId}
+                        onChange={(e) => setVehicleTypeId(Number(e.target.value))}
+                        className="appearance-none w-full h-10 rounded-xl border border-zinc-200/90 bg-[#F7F8FA] pl-3.5 pr-10 text-xs text-[#111214] focus-visible:outline-none focus-visible:bg-white focus-visible:border-[#0066FF] focus-visible:ring-2 focus-visible:ring-[#0066FF]/20 transition-colors cursor-pointer"
+                      >
+                        <option value={8}>Motorbike (up to 20 kg)</option>
+                        <option value={7}>Walker / Bicycle (up to 10 kg)</option>
+                        <option value={1}>Car / Van (up to 200 kg)</option>
+                      </select>
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute right-4 top-1/2 -translate-y-[65%] h-2 w-2 rotate-45 border-r-[1.5px] border-b-[1.5px] border-zinc-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="calc-weight-kg" className="text-xs font-medium text-zinc-600 block">
+                      Package Weight (kg)
+                    </label>
+                    <Input
+                      id="calc-weight-kg"
+                      name="weightKg"
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={weightKg}
+                      onChange={(e) => setWeightKg(Number(e.target.value))}
+                      className="h-10 tabular-nums"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={handleCalculate}
-            disabled={loading || !dropAddress.trim()}
-            className="w-full"
-          >
-            {loading ? "Calculating Live Fare..." : "Calculate Live Fare"}
-          </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              disabled={loading}
+              className="w-full"
+            >
+              {loading ? "Calculating Live Fare..." : "Calculate Live Fare"}
+            </Button>
+          </form>
         </Card>
 
         {/* Right Bento Stack: Obsidian Hero Quote Card + Breakdown Card */}
         <div className="lg:col-span-5 flex flex-col gap-5">
-          <div className="rounded-[24px] bg-gradient-to-br from-[#1C1D22] via-[#111214] to-[#08090B] text-white p-6 flex flex-col justify-between gap-5 shadow-sm min-h-[192px]">
+          <div className="rounded-[24px] bg-gradient-to-br from-[#1C1D22] via-[#111214] to-[#08090B] text-white p-6 flex flex-col justify-between gap-5 shadow-sm min-h-[168px]">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-medium text-zinc-300">Estimated Borzo Fare</span>
               {distanceKm && (

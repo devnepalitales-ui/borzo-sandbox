@@ -515,7 +515,7 @@ export function CreateOrder({
                 <button
                   type="button"
                   onClick={handleCalculate}
-                  disabled={calcLoading || !dropAddress.trim()}
+                  disabled={calcLoading}
                   className="inline-flex items-center justify-center rounded-full bg-[#0066FF] hover:bg-[#0052D4] disabled:bg-white/15 disabled:text-zinc-400 text-white font-semibold text-xs h-10 px-5 transition-colors cursor-pointer shrink-0"
                 >
                   {calcLoading ? "Calculating..." : "Calculate Fare"}

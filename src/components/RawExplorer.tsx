@@ -184,15 +184,21 @@ export function RawExplorer({ token }: { token?: string }) {
 
           <CardContent className="p-0 space-y-4">
             <div className="flex items-center gap-2">
-              <select
-                value={method}
-                onChange={(e) => setMethod(e.target.value as "GET" | "POST")}
-                aria-label="HTTP method"
-                className="h-9 px-3 rounded-xl bg-[#F7F8FA] border border-zinc-200/90 text-xs font-mono font-bold text-[#111214] focus-visible:outline-none focus-visible:border-[#0066FF] cursor-pointer"
-              >
-                <option value="POST">POST</option>
-                <option value="GET">GET</option>
-              </select>
+              <div className="relative">
+                <select
+                  value={method}
+                  onChange={(e) => setMethod(e.target.value as "GET" | "POST")}
+                  aria-label="HTTP method"
+                  className="appearance-none h-9 pl-3.5 pr-8 rounded-xl bg-[#F7F8FA] border border-zinc-200/90 text-xs font-mono font-bold text-[#111214] focus-visible:outline-none focus-visible:border-[#0066FF] cursor-pointer"
+                >
+                  <option value="POST">POST</option>
+                  <option value="GET">GET</option>
+                </select>
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-[65%] h-1.5 w-1.5 rotate-45 border-r-[1.5px] border-b-[1.5px] border-zinc-500"
+                />
+              </div>
               <Input
                 value={endpoint}
                 onChange={(e) => setEndpoint(e.target.value)}
