@@ -1,25 +1,70 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
 @layer base {
   :root {
     --background: 220 14% 96%;
     --foreground: 220 13% 9%;
+    --target-min: 24px;
+  }
+
+  @media (pointer: coarse) {
+    :root {
+      --target-min: 44px;
+    }
   }
 
   body {
     background-color: #f3f4f6;
     color: #111214;
+    font-family: var(--font-sans);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
+    overflow-wrap: break-word;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p,
+  li {
+    text-wrap: pretty;
+  }
+
+  :where(a, code) {
+    overflow-wrap: anywhere;
   }
 
   ::selection {
-    background-color: rgba(0, 102, 255, 0.16);
-    color: #0052d4;
+    background-color: rgba(0, 102, 255, 0.24);
+    color: inherit;
+  }
+
+  :where(button, a, input, select, textarea, summary):focus-visible {
+    outline: 2px solid #0066ff;
+    outline-offset: 2px;
   }
 }
 
+/* Native dialog backdrop styling */
+dialog.app-dialog::backdrop {
+  background: rgba(17, 18, 20, 0.45);
+  backdrop-filter: blur(4px);
+}
+
 /* Crisp custom scrollbar for light bento canvas */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(17, 18, 20, 0.16) transparent;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
