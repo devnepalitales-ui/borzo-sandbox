@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { ChevronDown } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
@@ -14,8 +15,8 @@ export function PriceCalculator({ config }: { config: ConfigData | null }) {
   const [pickupAddress, setPickupAddress] = useState("");
   const [pickupPhone, setPickupPhone] = useState("");
   const [dropAddress, setDropAddress] = useState("");
-  const [dropPhone, setDropPhone] = useState("919820000001");
-  const [dropName, setDropName] = useState("Recipient");
+  const [dropPhone] = useState("919820000001");
+  const [dropName] = useState("Recipient");
   const [matter] = useState("Nepali Tales Food Parcel");
   const [vehicleTypeId, setVehicleTypeId] = useState(8);
   const [weightKg, setWeightKg] = useState(1);
@@ -33,7 +34,7 @@ export function PriceCalculator({ config }: { config: ConfigData | null }) {
   const handleCalculate = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!dropAddress.trim()) {
-      setError("Please enter a destination address.");
+      setError("Enter a destination address to calculate fare.");
       return;
     }
 
@@ -88,21 +89,21 @@ export function PriceCalculator({ config }: { config: ConfigData | null }) {
   return (
     <div className="space-y-5">
       {error && (
-        <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
+        <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800">
           {error}
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         {/* Left White Bento Card: Parameters */}
-        <Card className="lg:col-span-7 p-6 flex flex-col">
-          <form onSubmit={handleCalculate} className="flex-1 flex flex-col justify-between gap-6">
+        <Card className="lg:col-span-7 p-5 flex flex-col">
+          <form onSubmit={handleCalculate} className="flex-1 flex flex-col justify-between gap-5">
             <div className="space-y-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-base font-bold text-[#111214] tracking-tight">Delivery Parameters</h2>
-                  <p className="text-xs text-zinc-500 mt-1">
-                    Test Borzo delivery rates for any Mumbai or Thane address
+                  <h2 className="text-[15px] font-semibold text-[#111214] tracking-tight">Delivery parameters</h2>
+                  <p className="text-xs text-zinc-600 mt-1">
+                    Estimate Borzo courier rates for any Mumbai or Thane address
                   </p>
                 </div>
                 <Badge variant="secondary" className="shrink-0">
@@ -112,8 +113,8 @@ export function PriceCalculator({ config }: { config: ConfigData | null }) {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label htmlFor="calc-drop-address" className="text-xs font-medium text-zinc-600 block">
-                    Destination Address
+                  <label htmlFor="calc-drop-address" className="text-xs font-medium text-zinc-700 block">
+                    Destination address
                   </label>
                   <textarea
                     id="calc-drop-address"
@@ -124,15 +125,15 @@ export function PriceCalculator({ config }: { config: ConfigData | null }) {
                       setDropAddress(e.target.value);
                       if (error) setError(null);
                     }}
-                    placeholder="Enter landmark, society, or street address in Thane / Mumbai"
-                    className="w-full min-h-[88px] rounded-xl border border-zinc-200/90 bg-[#F7F8FA] px-3.5 py-3 text-xs text-[#111214] placeholder:text-zinc-500 focus-visible:outline-none focus-visible:bg-white focus-visible:border-[#0066FF] focus-visible:ring-2 focus-visible:ring-[#0066FF]/20 resize-none transition-colors"
+                    placeholder="Building or society, street, area, Thane / Mumbai"
+                    className="w-full min-h-[88px] rounded-[10px] border border-black/[0.1] bg-[#F8F9FA] px-3 py-2.5 text-[13px] text-[#111214] placeholder:text-zinc-500 focus-visible:outline-none focus-visible:bg-white focus-visible:border-[#0066FF] focus-visible:ring-3 focus-visible:ring-[#0066FF]/12 resize-none transition-[background-color,border-color,box-shadow] duration-150"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label htmlFor="calc-vehicle-type" className="text-xs font-medium text-zinc-600 block">
-                      Vehicle Type
+                    <label htmlFor="calc-vehicle-type" className="text-xs font-medium text-zinc-700 block">
+                      Vehicle type
                     </label>
                     <div className="relative">
                       <select
@@ -140,22 +141,23 @@ export function PriceCalculator({ config }: { config: ConfigData | null }) {
                         name="vehicleTypeId"
                         value={vehicleTypeId}
                         onChange={(e) => setVehicleTypeId(Number(e.target.value))}
-                        className="appearance-none w-full h-10 rounded-xl border border-zinc-200/90 bg-[#F7F8FA] pl-3.5 pr-10 text-xs text-[#111214] focus-visible:outline-none focus-visible:bg-white focus-visible:border-[#0066FF] focus-visible:ring-2 focus-visible:ring-[#0066FF]/20 transition-colors cursor-pointer"
+                        className="appearance-none w-full h-10 rounded-[10px] border border-black/[0.1] bg-[#F8F9FA] pl-3 pr-9 text-[13px] text-[#111214] focus-visible:outline-none focus-visible:bg-white focus-visible:border-[#0066FF] focus-visible:ring-3 focus-visible:ring-[#0066FF]/12 transition-[background-color,border-color,box-shadow] duration-150 cursor-pointer"
                       >
                         <option value={8}>Motorbike (up to 20 kg)</option>
                         <option value={7}>Walker / Bicycle (up to 10 kg)</option>
                         <option value={1}>Car / Van (up to 200 kg)</option>
                       </select>
-                      <span
+                      <ChevronDown
+                        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600"
+                        strokeWidth={1.5}
                         aria-hidden="true"
-                        className="pointer-events-none absolute right-4 top-1/2 -translate-y-[65%] h-2 w-2 rotate-45 border-r-[1.5px] border-b-[1.5px] border-zinc-500"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label htmlFor="calc-weight-kg" className="text-xs font-medium text-zinc-600 block">
-                      Package Weight (kg)
+                    <label htmlFor="calc-weight-kg" className="text-xs font-medium text-zinc-700 block">
+                      Package weight (kg)
                     </label>
                     <Input
                       id="calc-weight-kg"
@@ -165,7 +167,7 @@ export function PriceCalculator({ config }: { config: ConfigData | null }) {
                       max="20"
                       value={weightKg}
                       onChange={(e) => setWeightKg(Number(e.target.value))}
-                      className="h-10 tabular-nums"
+                      className="h-10 font-mono tabular-nums"
                     />
                   </div>
                 </div>
@@ -179,36 +181,36 @@ export function PriceCalculator({ config }: { config: ConfigData | null }) {
               disabled={loading}
               className="w-full"
             >
-              {loading ? "Calculating Live Fare..." : "Calculate Live Fare"}
+              {loading ? "Calculating live fare..." : "Calculate live fare"}
             </Button>
           </form>
         </Card>
 
         {/* Right Bento Stack: Obsidian Hero Quote Card + Breakdown Card */}
         <div className="lg:col-span-5 flex flex-col gap-5">
-          <div className="rounded-[24px] bg-gradient-to-br from-[#1C1D22] via-[#111214] to-[#08090B] text-white p-6 flex flex-col justify-between gap-5 shadow-sm min-h-[168px]">
+          <div className="rounded-[20px] bg-[#111214] border border-white/10 text-white p-5 flex flex-col justify-between gap-5 min-h-[168px]">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-medium text-zinc-300">Estimated Borzo Fare</span>
+              <span className="text-xs font-medium text-zinc-300">Estimated Borzo fare</span>
               {distanceKm && (
-                <span className="inline-flex items-center rounded-full bg-emerald-400/15 border border-emerald-400/30 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-300 font-mono">
+                <span className="inline-flex items-center rounded-full bg-emerald-400/15 border border-emerald-400/30 px-2.5 py-0.5 text-[11px] font-medium text-emerald-300 font-mono tabular-nums">
                   {distanceKm} km route
                 </span>
               )}
             </div>
 
             {loading ? (
-              <div className="space-y-3 py-2" aria-busy="true">
-                <div className="h-9 w-36 rounded-lg bg-white/10 animate-pulse" />
-                <p className="text-xs text-zinc-400">Querying real-time distance & rates...</p>
+              <div className="space-y-2.5 py-2" aria-busy="true">
+                <div className="h-8 w-32 rounded-lg bg-white/10" />
+                <p className="text-xs text-zinc-400">Querying real-time distance &amp; rates...</p>
               </div>
             ) : order ? (
               <div className="space-y-2.5">
-                <div className="text-4xl font-bold tracking-tight tabular-nums leading-none">
+                <div className="text-[32px] font-semibold tracking-tight tabular-nums leading-none">
                   {formatCurrency(order.payment_amount)}
                 </div>
                 <div className="text-xs text-zinc-400">
-                  Pickup arrival window:{" "}
-                  <span className="text-emerald-400 font-semibold font-mono">
+                  Pickup arrival window{" "}
+                  <span className="text-emerald-400 font-medium font-mono tabular-nums ml-1">
                     {dropPoint?.required_finish_datetime
                       ? new Date(dropPoint.required_finish_datetime).toLocaleTimeString([], {
                           hour: "2-digit",
@@ -220,30 +222,30 @@ export function PriceCalculator({ config }: { config: ConfigData | null }) {
               </div>
             ) : (
               <div className="space-y-1.5 py-1">
-                <div className="text-lg font-bold tracking-tight text-white">No Destination Quoted</div>
+                <div className="text-lg font-semibold tracking-tight text-white">No destination quoted</div>
                 <p className="text-xs text-zinc-400 leading-relaxed max-w-[36ch]">
-                  Enter any destination address on the left and click Calculate Live Fare.
+                  Enter a destination address and calculate fare to preview pricing.
                 </p>
               </div>
             )}
           </div>
 
-          <Card className="p-6 flex-1 flex flex-col justify-center">
-            <div className="divide-y divide-zinc-100 text-xs">
+          <Card className="p-5 flex-1 flex flex-col justify-center">
+            <div className="divide-y divide-black/[0.06] text-xs">
               <div className="flex items-center justify-between gap-4 pb-3.5">
-                <span className="text-zinc-500">Base Courier Charge</span>
+                <span className="text-zinc-600">Base courier charge</span>
                 <span className="font-mono font-semibold text-[#111214] tabular-nums">
                   {order ? formatCurrency(order.delivery_fee_amount) : "—"}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-4 py-3.5">
-                <span className="text-zinc-500">Weight Surcharge</span>
+                <span className="text-zinc-600">Weight surcharge</span>
                 <span className="font-mono font-semibold text-[#111214] tabular-nums">
                   {order ? formatCurrency(order.weight_fee_amount || 0) : "—"}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-4 pt-3.5">
-                <span className="text-zinc-500">Pickup Kitchen</span>
+                <span className="text-zinc-600">Pickup kitchen</span>
                 <span className="font-medium text-[#111214] text-right">
                   Kasarvadavali, Thane West
                 </span>

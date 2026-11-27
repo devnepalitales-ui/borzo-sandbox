@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { Plus, Minus, Check, ExternalLink, Copy } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
@@ -74,6 +75,7 @@ export function CreateOrder({
 
   // Booking Execution State
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [confirmingBooking, setConfirmingBooking] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<any>(null);
   const [bookingError, setBookingError] = useState<string | null>(null);
 
@@ -86,6 +88,11 @@ export function CreateOrder({
       setPickupPhone(config.kitchen.phone);
     }
   }, [config]);
+
+  // Dismiss inline booking confirmation whenever dispatch inputs change
+  useEffect(() => {
+    setConfirmingBooking(false);
+  }, [dropName, dropPhone, dropAddress, paymentPayer, quantities]);
 
   const updateQuantity = (id: string, delta: number) => {
     setQuantities((prev) => {
@@ -145,14 +152,15 @@ export function CreateOrder({
   };
 
   const handleCalculate = async () => {
-    if (!dropAddress || !pickupAddress) {
-      setCalcError("Please enter a street delivery address first.");
+    if (!dropAddress.trim() || !pickupAddress.trim()) {
+      setCalcError("Enter a street delivery address to check the live rate.");
       return;
     }
 
     setCalcLoading(true);
     setCalcError(null);
     setCalcResult(null);
+    setConfirmingBooking(false);
 
     const payload = {
       type: "standard",
@@ -179,7 +187,7 @@ export function CreateOrder({
       });
       const data = await res.json();
       if (!res.ok || !data.is_successful) {
-        const errorMsg = data.errors?.join(", ") || "Calculation failed";
+        const errorMsg = data.errors?.join(", ") || "Rate calculation failed";
         const paramErrors = data.parameter_errors ? JSON.stringify(data.parameter_errors, null, 2) : "";
         setCalcError(`${errorMsg}${paramErrors ? `:\n${paramErrors}` : ""}`);
       } else {
@@ -192,15 +200,21 @@ export function CreateOrder({
     }
   };
 
-  const handleBookDelivery = async () => {
-    if (!dropAddress || !dropPhone || !dropName) {
-      setBookingError("Please provide recipient Name, Phone number, and Delivery Address.");
+  const handleRequestDispatch = () => {
+    if (!dropName.trim() || !dropPhone.trim() || !dropAddress.trim()) {
+      setBookingError("Enter recipient name, phone number, and street address before booking.");
       return;
     }
+    setBookingError(null);
+    setConfirmingBooking(true);
+  };
 
-    const confirmPrompt = `Confirm Delivery Booking:\n\n• Recipient: ${dropName} (${dropPhone})\n• Address: ${dropAddress}\n• Food Items (${totalItemCount}): ${compiledMatter}\n• Food Value: ₹${foodSubtotal}\n• Delivery Fee: ₹${calcResult?.payment_amount || "Calculating..."}\n• Delivery Fee Paid By: ${paymentPayer === "kitchen" ? "Kitchen / Founder (at pickup)" : "Customer (at doorstep)"}\n\nProceed to dispatch Borzo motorbike courier?`;
-
-    if (!confirm(confirmPrompt)) return;
+  const handleConfirmBookDelivery = async () => {
+    if (!dropName.trim() || !dropPhone.trim() || !dropAddress.trim()) {
+      setBookingError("Enter recipient name, phone number, and street address before booking.");
+      setConfirmingBooking(false);
+      return;
+    }
 
     setBookingLoading(true);
     setBookingError(null);
@@ -261,6 +275,7 @@ export function CreateOrder({
         setBookingError(`${errorMsg}${paramErrors ? `:\n${paramErrors}` : ""}`);
       } else {
         setCreatedOrder(data.order);
+        setConfirmingBooking(false);
         setClientOrderId(`NT-${Math.floor(1000 + Math.random() * 9000)}`);
         if (onOrderCreated) onOrderCreated();
       }
@@ -276,6 +291,7 @@ export function CreateOrder({
     setCalcResult(null);
     setBookingError(null);
     setCalcError(null);
+    setConfirmingBooking(false);
     setDropName("");
     setDropPhone("");
     setDropAddress("");
@@ -296,9 +312,9 @@ export function CreateOrder({
     const itemsText = selectedItems.length > 0 ? `\nItems: ${compiledMatter}` : "";
     const paymentNote =
       paymentPayer === "customer" && calcResult?.payment_amount
-        ? `\n💰 Delivery Fee: ₹${calcResult.payment_amount} (to be paid in cash to the rider)`
+        ? `\nDelivery fee: ₹${calcResult.payment_amount} (to be paid in cash to the rider)`
         : "";
-    const msg = `Namaste ${dropName || "there"}! 🥟 Your authentic Nepali food order from Nepali Tales is freshly prepared and out for delivery with Borzo courier. 🛵${itemsText}${paymentNote}\n\nTrack your courier live here:\n${trackingUrl || ""}\n\nEnjoy your meal!`;
+    const msg = `Namaste ${dropName || "there"}, your food order from Nepali Tales is freshly prepared and out for delivery with a Borzo rider.${itemsText}${paymentNote}\n\nTrack your courier live:\n${trackingUrl || ""}`;
     navigator.clipboard.writeText(msg);
     setCopiedWhatsApp(true);
     setTimeout(() => setCopiedWhatsApp(false), 2000);
@@ -317,15 +333,18 @@ export function CreateOrder({
     <div className="space-y-5">
       {/* Success Confirmation Bento Tile */}
       {createdOrder && (
-        <Card className="p-5 bg-emerald-50/90 border-emerald-200">
+        <Card className="p-5 bg-emerald-50 border-emerald-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm font-bold text-[#111214]">Borzo Courier Dispatched</h3>
-                <Badge variant="success">Order #{createdOrder.order_id}</Badge>
+                <h3 className="text-sm font-semibold text-[#111214]">Courier dispatched</h3>
+                <Badge variant="success" className="font-mono tabular-nums">
+                  Order #{createdOrder.order_id}
+                </Badge>
               </div>
-              <p className="text-xs text-zinc-600">
-                Courier requested for pickup at Thane West kitchen &middot; {formatCurrency(createdOrder.payment_amount)}
+              <p className="text-xs text-zinc-700">
+                Pickup requested at Thane West kitchen &middot;{" "}
+                <span className="font-mono tabular-nums">{formatCurrency(createdOrder.payment_amount)}</span>
               </p>
             </div>
 
@@ -334,11 +353,22 @@ export function CreateOrder({
                 <>
                   <a href={trackingUrl} target="_blank" rel="noreferrer">
                     <Button variant="outline" size="sm">
-                      Open Tracker
+                      <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
+                      <span>Open Tracker</span>
                     </Button>
                   </a>
                   <Button variant="primary" size="sm" onClick={copyWhatsApp}>
-                    {copiedWhatsApp ? "Copied!" : "WhatsApp Update"}
+                    {copiedWhatsApp ? (
+                      <>
+                        <Check className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
+                        <span>Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
+                        <span>Copy WhatsApp Update</span>
+                      </>
+                    )}
                   </Button>
                 </>
               )}
@@ -350,79 +380,89 @@ export function CreateOrder({
         </Card>
       )}
 
-      {/* Alerts */}
+      {/* Inline Validation & API Alerts */}
       {bookingError && (
-        <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
-          <pre className="font-mono text-[11px] whitespace-pre-wrap">{bookingError}</pre>
+        <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800">
+          <pre className="font-mono text-xs whitespace-pre-wrap">{bookingError}</pre>
         </div>
       )}
       {calcError && (
-        <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+        <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
           {calcError}
         </div>
       )}
 
-      {/* ROW 1: ASYMMETRIC BENTO HERO ROW (Destination Left + Dark Quote & Sub-cards Right) */}
+      {/* ROW 1: ASYMMETRIC BENTO HERO ROW (Destination Left + Quote & Sub-cards Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         {/* LEFT BENTO TILE (6 cols): Delivery Destination */}
-        <Card className="lg:col-span-6 p-6 flex flex-col justify-between gap-5">
+        <Card className="lg:col-span-6 p-5 flex flex-col justify-between gap-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-[#111214] tracking-tight">Delivery Destination</h2>
-              <p className="text-xs text-zinc-500 mt-0.5">Enter recipient contact and street address</p>
+              <h2 className="text-[15px] font-semibold text-[#111214] tracking-tight">Delivery destination</h2>
+              <p className="text-xs text-zinc-600 mt-0.5">Recipient contact and street drop address</p>
             </div>
             <button
               type="button"
               onClick={handleCalculate}
               disabled={calcLoading}
-              className="h-8 rounded-full bg-[#F3F4F6] hover:bg-zinc-200/80 px-3.5 text-[11px] font-semibold text-[#111214] transition-colors cursor-pointer shrink-0 disabled:opacity-60"
+              className="h-8 rounded-xl bg-[#F3F4F6] hover:bg-zinc-200/80 px-3 text-xs font-medium text-[#111214] transition-colors cursor-pointer shrink-0 disabled:opacity-50"
             >
-              {calcLoading ? "Checking..." : "Check Rate"}
+              {calcLoading ? "Checking..." : "Check rate"}
             </button>
           </div>
 
-          <div className="space-y-3.5">
+          <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label htmlFor="drop-name" className="text-xs font-medium text-zinc-600 block">
-                  Recipient Name <span className="text-rose-500">*</span>
+                <label htmlFor="drop-name" className="text-xs font-medium text-zinc-700 block">
+                  Recipient name <span className="text-rose-600">*</span>
                 </label>
                 <Input
                   id="drop-name"
-                  placeholder="e.g. Ankit Bhavarthe"
+                  placeholder="Customer full name"
                   value={dropName}
-                  onChange={(e) => setDropName(e.target.value)}
+                  onChange={(e) => {
+                    setDropName(e.target.value);
+                    if (bookingError) setBookingError(null);
+                  }}
                 />
               </div>
               <div className="space-y-1.5">
-                <label htmlFor="drop-phone" className="text-xs font-medium text-zinc-600 block">
-                  Phone Number <span className="text-rose-500">*</span>
+                <label htmlFor="drop-phone" className="text-xs font-medium text-zinc-700 block">
+                  Phone number <span className="text-rose-600">*</span>
                 </label>
                 <Input
                   id="drop-phone"
                   type="tel"
-                  placeholder="e.g. 9309348875"
+                  placeholder="10-digit mobile number"
                   value={dropPhone}
-                  onChange={(e) => setDropPhone(e.target.value)}
-                  className="font-mono"
+                  onChange={(e) => {
+                    setDropPhone(e.target.value);
+                    if (bookingError) setBookingError(null);
+                  }}
+                  className="font-mono tabular-nums"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="drop-address" className="text-xs font-medium text-zinc-600 block">
-                Street Delivery Address <span className="text-rose-500">*</span>
+              <label htmlFor="drop-address" className="text-xs font-medium text-zinc-700 block">
+                Street delivery address <span className="text-rose-600">*</span>
               </label>
               <textarea
                 id="drop-address"
                 rows={2}
-                placeholder="Apartment/Society name, street, area, Thane / Mumbai"
+                placeholder="Building or society, street, area, Thane / Mumbai"
                 value={dropAddress}
-                onChange={(e) => setDropAddress(e.target.value)}
-                onBlur={() => {
-                  if (dropAddress) handleCalculate();
+                onChange={(e) => {
+                  setDropAddress(e.target.value);
+                  if (calcError) setCalcError(null);
+                  if (bookingError) setBookingError(null);
                 }}
-                className="w-full min-h-[68px] rounded-xl border border-zinc-200/90 bg-[#F7F8FA] px-3.5 py-2.5 text-xs text-[#111214] placeholder:text-zinc-500 focus-visible:outline-none focus-visible:bg-white focus-visible:border-[#0066FF] focus-visible:ring-2 focus-visible:ring-[#0066FF]/20 resize-none transition-colors"
+                onBlur={() => {
+                  if (dropAddress.trim()) handleCalculate();
+                }}
+                className="w-full min-h-[72px] rounded-[10px] border border-black/[0.1] bg-[#F8F9FA] px-3 py-2.5 text-[13px] text-[#111214] placeholder:text-zinc-500 focus-visible:outline-none focus-visible:bg-white focus-visible:border-[#0066FF] focus-visible:ring-3 focus-visible:ring-[#0066FF]/12 resize-none transition-[background-color,border-color,box-shadow] duration-150"
               />
             </div>
 
@@ -441,7 +481,7 @@ export function CreateOrder({
               />
               <Input
                 aria-label="Floor number"
-                placeholder="Floor #"
+                placeholder="Floor"
                 value={floorNumber}
                 onChange={(e) => setFloorNumber(e.target.value)}
               />
@@ -455,131 +495,166 @@ export function CreateOrder({
           </div>
         </Card>
 
-        {/* RIGHT BENTO STACK (6 cols): Black Hero Quote Card + Dual Bento Sub-Cards */}
+        {/* RIGHT BENTO STACK (6 cols): Contrast Quote Card + Dual Bento Sub-Cards */}
         <div className="lg:col-span-6 flex flex-col gap-5">
           {/* TOP HERO OBSIDIAN CARD */}
-          <div className="rounded-[24px] bg-gradient-to-br from-[#1C1D22] via-[#111214] to-[#08090B] text-white p-6 shadow-sm flex flex-col justify-between gap-5 min-h-[164px]">
+          <div className="rounded-[20px] bg-[#111214] border border-white/10 text-white p-5 flex flex-col justify-between gap-4 min-h-[168px]">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-zinc-300">Live Borzo Quote</span>
+                <span className="text-xs font-medium text-zinc-300">Live Borzo quote</span>
                 {distanceKm && (
-                  <span className="inline-flex items-center rounded-full bg-emerald-400/15 border border-emerald-400/30 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-300 font-mono">
+                  <span className="inline-flex items-center rounded-full bg-emerald-400/15 border border-emerald-400/30 px-2.5 py-0.5 text-[11px] font-medium text-emerald-300 font-mono tabular-nums">
                     {distanceKm} km
                   </span>
                 )}
               </div>
-              <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-medium text-zinc-300">
+              <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-zinc-300">
                 Motorbike &middot; Standard
               </span>
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-              <div>
-                {calcLoading ? (
-                  <div className="space-y-2 py-0.5" aria-busy="true">
-                    <div className="h-8 w-28 rounded-lg bg-white/10 animate-pulse" />
-                    <span className="text-xs text-zinc-400 block">Calculating live rate...</span>
-                  </div>
-                ) : calcResult ? (
-                  <div>
-                    <div className="text-3xl sm:text-4xl font-bold tracking-tight tabular-nums leading-none">
-                      {formatCurrency(calcResult.payment_amount)}
+            {confirmingBooking && calcResult ? (
+              <div className="rounded-xl bg-white/[0.06] border border-white/10 p-3.5 space-y-3">
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  <div className="min-w-0">
+                    <div className="font-medium text-white truncate">
+                      Dispatch to {dropName}
                     </div>
-                    <p className="text-xs text-zinc-400 mt-2">
-                      {calcResult.points?.[0]?.required_finish_datetime
-                        ? `Pickup arrival by ${new Date(calcResult.points[0].required_finish_datetime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-                        : "Live Borzo Motorbike Courier"}
-                    </p>
+                    <div className="text-zinc-400 truncate mt-0.5">
+                      {paymentPayer === "kitchen" ? "Kitchen pays at pickup" : "Customer pays at door"} &middot;{" "}
+                      <span className="font-mono tabular-nums text-zinc-200">
+                        {formatCurrency(calcResult.payment_amount)}
+                      </span>
+                    </div>
                   </div>
+                </div>
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingBooking(false)}
+                    disabled={bookingLoading}
+                    className="h-9 px-3.5 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-medium text-zinc-200 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    Keep editing
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmBookDelivery}
+                    disabled={bookingLoading}
+                    className="h-9 px-4 rounded-xl bg-[#0066FF] hover:bg-[#0052D4] text-xs font-medium text-white transition-colors cursor-pointer disabled:opacity-50 tabular-nums"
+                  >
+                    {bookingLoading
+                      ? "Booking courier..."
+                      : `Confirm dispatch · ${formatCurrency(calcResult.payment_amount)}`}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                <div>
+                  {calcLoading ? (
+                    <div className="space-y-2 py-0.5" aria-busy="true">
+                      <div className="h-8 w-28 rounded-lg bg-white/10" />
+                      <span className="text-xs text-zinc-400 block">Calculating live rate...</span>
+                    </div>
+                  ) : calcResult ? (
+                    <div>
+                      <div className="text-[30px] font-semibold tracking-tight tabular-nums leading-none">
+                        {formatCurrency(calcResult.payment_amount)}
+                      </div>
+                      <p className="text-xs text-zinc-400 mt-2">
+                        {calcResult.points?.[0]?.required_finish_datetime
+                          ? `Pickup arrival by ${new Date(calcResult.points[0].required_finish_datetime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                          : "Live Borzo motorbike courier"}
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="text-xl font-semibold tracking-tight text-white">Ready to quote</div>
+                      <p className="text-xs text-zinc-400 mt-1.5">
+                        Enter a destination address to pull the live delivery rate
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {calcResult ? (
+                  <button
+                    type="button"
+                    onClick={handleRequestDispatch}
+                    disabled={bookingLoading}
+                    className="inline-flex items-center justify-center rounded-xl bg-[#0066FF] hover:bg-[#0052D4] disabled:bg-white/15 disabled:text-zinc-400 text-white font-medium text-xs h-10 px-5 transition-colors cursor-pointer shrink-0"
+                  >
+                    {bookingLoading ? "Booking courier..." : "Book courier"}
+                  </button>
                 ) : (
-                  <div>
-                    <div className="text-2xl font-bold tracking-tight text-white">Ready to Quote</div>
-                    <p className="text-xs text-zinc-400 mt-1.5">
-                      Add recipient address on the left to calculate live delivery cost
-                    </p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCalculate}
+                    disabled={calcLoading}
+                    className="inline-flex items-center justify-center rounded-xl bg-[#0066FF] hover:bg-[#0052D4] disabled:bg-white/15 disabled:text-zinc-400 text-white font-medium text-xs h-10 px-5 transition-colors cursor-pointer shrink-0"
+                  >
+                    {calcLoading ? "Calculating..." : "Calculate fare"}
+                  </button>
                 )}
               </div>
-
-              {/* Electric Cobalt Blue Primary Pill Button */}
-              {calcResult ? (
-                <button
-                  type="button"
-                  onClick={handleBookDelivery}
-                  disabled={bookingLoading}
-                  className="inline-flex items-center justify-center rounded-full bg-[#0066FF] hover:bg-[#0052D4] disabled:bg-white/15 disabled:text-zinc-400 text-white font-semibold text-xs h-10 px-5 transition-colors cursor-pointer shrink-0 shadow-md shadow-blue-950/50 active:scale-[0.98]"
-                >
-                  {bookingLoading ? "Booking Courier..." : "Book Courier"}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleCalculate}
-                  disabled={calcLoading}
-                  className="inline-flex items-center justify-center rounded-full bg-[#0066FF] hover:bg-[#0052D4] disabled:bg-white/15 disabled:text-zinc-400 text-white font-semibold text-xs h-10 px-5 transition-colors cursor-pointer shrink-0"
-                >
-                  {calcLoading ? "Calculating..." : "Calculate Fare"}
-                </button>
-              )}
-            </div>
+            )}
           </div>
 
-          {/* BOTTOM SUB-ROW: White Metric Tile + Black Payer Toggle Tile */}
+          {/* BOTTOM SUB-ROW: White Parcel Metric Tile + Contrast Payer Toggle Tile */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 flex-1">
             <Card className="p-5 flex flex-col justify-between gap-3">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-zinc-500">Order Parcel</span>
-                <span className="inline-flex items-center rounded-full bg-[#F3F4F6] px-2.5 py-0.5 text-[10px] font-semibold text-zinc-700 font-mono">
+                <span className="text-xs font-medium text-zinc-600">Order parcel</span>
+                <span className="inline-flex items-center rounded-full bg-[#F3F4F6] px-2.5 py-0.5 text-[11px] font-medium text-zinc-700 font-mono tabular-nums">
                   {totalItemCount} {totalItemCount === 1 ? "item" : "items"}
                 </span>
               </div>
-              <div className="text-3xl font-bold text-[#111214] tabular-nums tracking-tight">
-                ₹{foodSubtotal}
+              <div className="text-[28px] font-semibold text-[#111214] tabular-nums tracking-tight leading-none">
+                {formatCurrency(foodSubtotal)}
               </div>
-              <div className="flex items-center justify-between text-[11px] text-zinc-500">
-                <span>Est. weight: {weightKg} kg</span>
-                <span className="text-emerald-600 font-semibold">Ready to pack</span>
+              <div className="flex items-center justify-between text-xs text-zinc-600">
+                <span className="tabular-nums">Est. weight {weightKg} kg</span>
+                <span className="text-emerald-700 font-medium">Ready to pack</span>
               </div>
             </Card>
 
-            <div className="rounded-[24px] bg-[#111214] text-white p-5 flex flex-col justify-between gap-3 shadow-sm">
+            <div className="rounded-[20px] bg-[#111214] border border-white/10 text-white p-5 flex flex-col justify-between gap-3">
               <div className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-medium text-zinc-300">
-                  Delivery Fee Payer
-                </span>
-                <span className="text-[11px] font-mono text-zinc-400">
-                  {paymentPayer === "kitchen" ? "At Pickup" : "At Door"}
+                <span className="text-xs font-medium text-zinc-300">Delivery fee payer</span>
+                <span className="text-xs font-mono text-zinc-400">
+                  {paymentPayer === "kitchen" ? "At pickup" : "At door"}
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-1.5 p-1 bg-white/[0.07] rounded-full">
+              <div className="grid grid-cols-2 gap-1 p-1 bg-white/[0.07] rounded-xl">
                 <button
                   type="button"
                   onClick={() => setPaymentPayer("kitchen")}
                   aria-pressed={paymentPayer === "kitchen"}
-                  className={`py-2 px-2.5 rounded-full text-[11px] font-semibold transition-colors cursor-pointer text-center ${
+                  className={`py-2 px-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer text-center ${
                     paymentPayer === "kitchen"
-                      ? "bg-[#0066FF] text-white shadow-sm"
-                      : "text-zinc-400 hover:text-white"
+                      ? "bg-[#0066FF] text-white"
+                      : "text-zinc-300 hover:text-white"
                   }`}
                 >
-                  Kitchen Pays
+                  Kitchen pays
                 </button>
                 <button
                   type="button"
                   onClick={() => setPaymentPayer("customer")}
                   aria-pressed={paymentPayer === "customer"}
-                  className={`py-2 px-2.5 rounded-full text-[11px] font-semibold transition-colors cursor-pointer text-center ${
+                  className={`py-2 px-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer text-center ${
                     paymentPayer === "customer"
-                      ? "bg-[#0066FF] text-white shadow-sm"
-                      : "text-zinc-400 hover:text-white"
+                      ? "bg-[#0066FF] text-white"
+                      : "text-zinc-300 hover:text-white"
                   }`}
                 >
-                  Customer Pays
+                  Customer pays
                 </button>
               </div>
 
-              <p className="text-[11px] text-zinc-400 leading-snug">
+              <p className="text-xs text-zinc-400 leading-snug">
                 {paymentPayer === "kitchen"
                   ? "Kitchen hands cash to courier at pickup."
                   : "Courier collects fee cash from customer."}
@@ -592,11 +667,11 @@ export function CreateOrder({
       {/* ROW 2: WIDE MENU BENTO GRID + PARCEL RECEIPT BENTO CARD */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         {/* WIDE MENU BENTO CARD (8 cols) */}
-        <Card className="lg:col-span-8 p-6 flex flex-col justify-between gap-4">
+        <Card className="lg:col-span-8 p-5 flex flex-col justify-between gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-[#111214] tracking-tight">Select Food Items & Add-ons</h2>
-              <p className="text-xs text-zinc-500 mt-0.5">Tap Add to include dishes or chutneys in this parcel</p>
+              <h2 className="text-[15px] font-semibold text-[#111214] tracking-tight">Menu items &amp; add-ons</h2>
+              <p className="text-xs text-zinc-600 mt-0.5">Include dishes and chutneys in this parcel</p>
             </div>
 
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -606,10 +681,10 @@ export function CreateOrder({
                   type="button"
                   onClick={() => setSelectedCategory(cat)}
                   aria-pressed={selectedCategory === cat}
-                  className={`h-8 px-3.5 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
+                  className={`h-8 px-3 rounded-full text-xs font-medium transition-colors cursor-pointer ${
                     selectedCategory === cat
                       ? "bg-[#111214] text-white"
-                      : "bg-[#F3F4F6] text-zinc-600 hover:text-[#111214] hover:bg-zinc-200/70"
+                      : "bg-[#F3F4F6] text-zinc-700 hover:text-[#111214] hover:bg-zinc-200/70"
                   }`}
                 >
                   {cat === "All" ? `All (${MENU_ITEMS.length})` : cat}
@@ -625,10 +700,10 @@ export function CreateOrder({
               return (
                 <div
                   key={item.id}
-                  className={`flex items-center justify-between gap-2 px-3.5 py-3 rounded-2xl border transition-colors ${
+                  className={`flex items-center justify-between gap-2 px-3.5 py-3 rounded-xl border transition-colors ${
                     qty > 0
-                      ? "bg-[#EEF4FF] border-[#0066FF]/40"
-                      : "bg-[#F7F8FA] border-black/[0.04] hover:border-zinc-300"
+                      ? "bg-[#EEF4FF] border-[#0066FF]/45"
+                      : "bg-[#F8F9FA] border-black/[0.08] hover:border-black/20"
                   }`}
                 >
                   <div className="min-w-0">
@@ -638,26 +713,25 @@ export function CreateOrder({
                           <span
                             title={item.type}
                             className={`h-2 w-2 rounded-full shrink-0 ${
-                              isVeg ? "bg-emerald-500" : "bg-rose-500"
+                              isVeg ? "bg-emerald-600" : "bg-rose-600"
                             }`}
                           />
                           <span className="sr-only">{item.type}</span>
                         </>
                       )}
-                      <span className="text-xs font-semibold text-[#111214] truncate">{item.name}</span>
+                      <span className="text-xs font-medium text-[#111214] truncate">{item.name}</span>
                     </div>
-                    <div className="text-[11px] font-mono text-zinc-500 flex items-center gap-1.5 mt-1">
-                      <span className="font-bold text-[#111214]">₹{item.price}</span>
+                    <div className="text-xs font-mono tabular-nums text-zinc-600 flex items-center gap-1.5 mt-1">
+                      <span className="font-semibold text-[#111214]">₹{item.price}</span>
                       {item.portion && (
                         <>
                           <span>&middot;</span>
-                          <span>{item.portion}</span>
+                          <span className="font-sans">{item.portion}</span>
                         </>
                       )}
                     </div>
                   </div>
 
-                  {/* Clean Icon-free Quantity Stepper */}
                   <div className="flex items-center gap-1 shrink-0">
                     {qty > 0 ? (
                       <>
@@ -665,27 +739,27 @@ export function CreateOrder({
                           type="button"
                           onClick={() => updateQuantity(item.id, -1)}
                           aria-label={`Decrease quantity of ${item.name}`}
-                          className="h-7 w-7 rounded-full bg-white border border-zinc-200 hover:bg-zinc-100 text-[#111214] text-xs font-bold flex items-center justify-center cursor-pointer transition-colors"
+                          className="h-7 w-7 rounded-lg bg-white border border-black/[0.12] hover:bg-zinc-100 text-[#111214] flex items-center justify-center cursor-pointer transition-colors"
                         >
-                          −
+                          <Minus className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
                         </button>
-                        <span className="w-5 text-center text-xs font-bold font-mono tabular-nums text-[#111214]">
+                        <span className="w-5 text-center text-xs font-semibold font-mono tabular-nums text-[#111214]">
                           {qty}
                         </span>
                         <button
                           type="button"
                           onClick={() => updateQuantity(item.id, 1)}
                           aria-label={`Increase quantity of ${item.name}`}
-                          className="h-7 w-7 rounded-full bg-[#0066FF] hover:bg-[#0052D4] text-white text-xs font-bold flex items-center justify-center cursor-pointer transition-colors"
+                          className="h-7 w-7 rounded-lg bg-[#0066FF] hover:bg-[#0052D4] text-white flex items-center justify-center cursor-pointer transition-colors"
                         >
-                          +
+                          <Plus className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
                         </button>
                       </>
                     ) : (
                       <button
                         type="button"
                         onClick={() => updateQuantity(item.id, 1)}
-                        className="h-7 px-3 rounded-full bg-white hover:bg-[#111214] hover:text-white border border-zinc-200/90 text-[#111214] text-[11px] font-semibold cursor-pointer transition-colors"
+                        className="h-7 px-3 rounded-lg bg-white hover:bg-[#111214] hover:text-white border border-black/[0.1] text-[#111214] text-xs font-medium cursor-pointer transition-colors"
                       >
                         Add
                       </button>
@@ -698,41 +772,43 @@ export function CreateOrder({
         </Card>
 
         {/* RIGHT PARCEL SUMMARY BENTO CARD (4 cols — Receipt + Notes) */}
-        <Card className="lg:col-span-4 p-6 flex flex-col justify-between gap-4">
+        <Card className="lg:col-span-4 p-5 flex flex-col justify-between gap-4">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h2 className="text-base font-bold text-[#111214] tracking-tight">Parcel Summary</h2>
-              <p className="text-xs text-zinc-500 mt-0.5">Sent to courier manifest</p>
+              <h2 className="text-[15px] font-semibold text-[#111214] tracking-tight">Parcel summary</h2>
+              <p className="text-xs text-zinc-600 mt-0.5">Included in courier manifest</p>
             </div>
-            <span className="inline-flex items-center rounded-full bg-[#F3F4F6] px-2.5 py-0.5 text-[11px] font-semibold text-zinc-700 font-mono tabular-nums">
-              ₹{foodSubtotal}
+            <span className="inline-flex items-center rounded-full bg-[#F3F4F6] px-2.5 py-0.5 text-xs font-semibold text-[#111214] font-mono tabular-nums">
+              {formatCurrency(foodSubtotal)}
             </span>
           </div>
 
           {/* Items Breakdown List */}
-          <div className="flex-1 rounded-2xl bg-[#F7F8FA] p-4 border border-black/[0.04] flex flex-col justify-between gap-3">
+          <div className="flex-1 rounded-xl bg-[#F8F9FA] p-4 border border-black/[0.08] flex flex-col justify-between gap-3">
             {selectedItems.length > 0 ? (
-              <div className="space-y-2 max-h-40 overflow-y-auto pr-1 text-xs divide-y divide-zinc-200/70">
+              <div className="space-y-2 max-h-40 overflow-y-auto pr-1 text-xs divide-y divide-black/[0.06]">
                 {selectedItems.map((si) => (
-                  <div key={si.item.id} className="flex justify-between pt-1.5 first:pt-0 text-[#111214]">
+                  <div key={si.item.id} className="flex justify-between pt-2 first:pt-0 text-[#111214]">
                     <span className="truncate pr-2 font-medium">
                       {si.count}x {si.item.name}
                     </span>
-                    <span className="font-mono font-semibold tabular-nums shrink-0">₹{si.total}</span>
+                    <span className="font-mono font-semibold tabular-nums shrink-0">
+                      {formatCurrency(si.total)}
+                    </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="py-6 text-center text-xs text-zinc-500">
-                No items selected yet. Select <strong>Add</strong> on the menu.
+              <div className="py-6 text-center text-xs text-zinc-600">
+                No items added. Choose dishes from the menu to attach to this manifest.
               </div>
             )}
 
-            <div className="pt-3 border-t border-zinc-200/70">
-              <span className="text-[10px] uppercase tracking-wider font-semibold text-zinc-500 block mb-1">
-                Courier Matter String
+            <div className="pt-3 border-t border-black/[0.06]">
+              <span className="text-xs font-medium text-zinc-600 block mb-1">
+                Courier matter
               </span>
-              <p className="font-mono text-[11px] text-zinc-600 line-clamp-2">{compiledMatter}</p>
+              <p className="font-mono text-xs text-zinc-700 line-clamp-2">{compiledMatter}</p>
             </div>
           </div>
 
