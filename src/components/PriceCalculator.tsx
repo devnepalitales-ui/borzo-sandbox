@@ -5,6 +5,14 @@ import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
 import { Input } from "./ui/input";
 import { formatCurrency } from "../lib/utils";
+import {
+  DeliveryMode,
+  DeliveryModeSelector,
+  ScheduleWindow,
+  buildDeliveryModePayload,
+  getDefaultScheduleWindow,
+  getDeliveryModeLabel,
+} from "./DeliveryModeSelector";
 
 interface ConfigData {
   borzo: { baseUrl: string; tokenMasked: string };
@@ -20,6 +28,8 @@ export function PriceCalculator({ config }: { config: ConfigData | null }) {
   const [matter] = useState("Nepali Tales Food Parcel");
   const [vehicleTypeId, setVehicleTypeId] = useState(8);
   const [weightKg, setWeightKg] = useState(1);
+  const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>("now");
+  const [schedule, setSchedule] = useState<ScheduleWindow>(getDefaultScheduleWindow);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,22 +52,26 @@ export function PriceCalculator({ config }: { config: ConfigData | null }) {
     setError(null);
     setResult(null);
 
-    const payload = {
-      type: "standard",
-      matter,
-      vehicle_type_id: Number(vehicleTypeId),
-      total_weight_kg: Number(weightKg),
-      points: [
-        {
-          address: pickupAddress,
-          contact_person: { phone: pickupPhone, name: config?.kitchen?.name || "Kitchen" },
-        },
-        {
-          address: dropAddress,
-          contact_person: { phone: dropPhone, name: dropName },
-        },
-      ],
-    };
+    const payload = buildDeliveryModePayload(
+      {
+        type: "standard" as const,
+        matter,
+        vehicle_type_id: Number(vehicleTypeId),
+        total_weight_kg: Number(weightKg),
+        points: [
+          {
+            address: pickupAddress,
+            contact_person: { phone: pickupPhone, name: config?.kitchen?.name || "Kitchen" },
+          },
+          {
+            address: dropAddress,
+            contact_person: { phone: dropPhone, name: dropName },
+          },
+        ],
+      },
+      deliveryMode,
+      schedule
+    );
 
     try {
       const res = await fetch("/api/borzo/calculate", {
@@ -112,6 +126,22 @@ export function PriceCalculator({ config }: { config: ConfigData | null }) {
               </div>
 
               <div className="space-y-4">
+                <DeliveryModeSelector
+                  mode={deliveryMode}
+                  onModeChange={(nextMode) => {
+                    setDeliveryMode(nextMode);
+                    setResult(null);
+                    setError(null);
+                  }}
+                  schedule={schedule}
+                  onScheduleChange={(nextSchedule) => {
+                    setSchedule(nextSchedule);
+                    setResult(null);
+                    setError(null);
+                  }}
+                  idPrefix="calc"
+                />
+
                 <div className="space-y-2">
                   <label htmlFor="calc-drop-address" className="text-xs font-medium text-zinc-700 block">
                     Destination address
@@ -139,11 +169,16 @@ export function PriceCalculator({ config }: { config: ConfigData | null }) {
                       <select
                         id="calc-vehicle-type"
                         name="vehicleTypeId"
-                        value={vehicleTypeId}
+                        value={deliveryMode === "4hour" ? 8 : vehicleTypeId}
+                        disabled={deliveryMode === "4hour"}
                         onChange={(e) => setVehicleTypeId(Number(e.target.value))}
-                        className="appearance-none w-full h-10 rounded-[10px] border border-black/[0.1] bg-[#F8F9FA] pl-3 pr-9 text-[13px] text-[#111214] focus-visible:outline-none focus-visible:bg-white focus-visible:border-[#0066FF] focus-visible:ring-3 focus-visible:ring-[#0066FF]/12 transition-[background-color,border-color,box-shadow] duration-150 cursor-pointer"
+                        className="appearance-none w-full h-10 rounded-[10px] border border-black/[0.1] bg-[#F8F9FA] pl-3 pr-9 text-[13px] text-[#111214] focus-visible:outline-none focus-visible:bg-white focus-visible:border-[#0066FF] focus-visible:ring-3 focus-visible:ring-[#0066FF]/12 transition-[background-color,border-color,box-shadow] duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        <option value={8}>Motorbike (up to 20 kg)</option>
+                        <option value={8}>
+                          {deliveryMode === "4hour"
+                            ? "Motorbike (auto-assigned)"
+                            : "Motorbike (up to 20 kg)"}
+                        </option>
                         <option value={7}>Walker / Bicycle (up to 10 kg)</option>
                         <option value={1}>Car / Van (up to 200 kg)</option>
                       </select>
@@ -191,11 +226,16 @@ export function PriceCalculator({ config }: { config: ConfigData | null }) {
           <div className="rounded-[20px] bg-[#111214] border border-white/10 text-white p-5 flex flex-col justify-between gap-5 min-h-[168px]">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-medium text-zinc-300">Estimated Borzo fare</span>
-              {distanceKm && (
-                <span className="inline-flex items-center rounded-full bg-emerald-400/15 border border-emerald-400/30 px-2.5 py-0.5 text-[11px] font-medium text-emerald-300 font-mono tabular-nums">
-                  {distanceKm} km route
+              <div className="flex items-center gap-2">
+                {distanceKm && (
+                  <span className="inline-flex items-center rounded-full bg-emerald-400/15 border border-emerald-400/30 px-2.5 py-0.5 text-[11px] font-medium text-emerald-300 font-mono tabular-nums">
+                    {distanceKm} km route
+                  </span>
+                )}
+                <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-zinc-300">
+                  {getDeliveryModeLabel(deliveryMode)}
                 </span>
-              )}
+              </div>
             </div>
 
             {loading ? (
