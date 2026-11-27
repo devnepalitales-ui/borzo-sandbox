@@ -5,6 +5,14 @@ import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
 import { Input } from "./ui/input";
 import { formatCurrency } from "../lib/utils";
+import {
+  DeliveryMode,
+  DeliveryModeSelector,
+  ScheduleWindow,
+  buildDeliveryModePayload,
+  getDefaultScheduleWindow,
+  getDeliveryModeLabel,
+} from "./DeliveryModeSelector";
 
 interface MenuItem {
   id: string;
@@ -65,8 +73,10 @@ export function CreateOrder({
   const [customNotes, setCustomNotes] = useState("");
   const [clientOrderId, setClientOrderId] = useState(`NT-${Math.floor(1000 + Math.random() * 9000)}`);
 
-  // Delivery Fee Payer Toggle
+  // Delivery Fee Payer & Speed Toggle
   const [paymentPayer, setPaymentPayer] = useState<"kitchen" | "customer">("kitchen");
+  const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>("now");
+  const [schedule, setSchedule] = useState<ScheduleWindow>(getDefaultScheduleWindow);
 
   // Live Calculation State
   const [calcLoading, setCalcLoading] = useState(false);
@@ -92,7 +102,7 @@ export function CreateOrder({
   // Dismiss inline booking confirmation whenever dispatch inputs change
   useEffect(() => {
     setConfirmingBooking(false);
-  }, [dropName, dropPhone, dropAddress, paymentPayer, quantities]);
+  }, [dropName, dropPhone, dropAddress, paymentPayer, quantities, deliveryMode, schedule]);
 
   const updateQuantity = (id: string, delta: number) => {
     setQuantities((prev) => {
@@ -162,22 +172,26 @@ export function CreateOrder({
     setCalcResult(null);
     setConfirmingBooking(false);
 
-    const payload = {
-      type: "standard",
-      matter: compiledMatter,
-      vehicle_type_id: 8,
-      total_weight_kg: weightKg,
-      points: [
-        {
-          address: pickupAddress,
-          contact_person: { phone: normalizePhone(pickupPhone), name: config?.kitchen?.name || "Nepali Tales Kitchen" },
-        },
-        {
-          address: dropAddress,
-          contact_person: { phone: normalizePhone(dropPhone) || "919820000001", name: dropName || "Recipient" },
-        },
-      ],
-    };
+    const payload = buildDeliveryModePayload(
+      {
+        type: "standard" as const,
+        matter: compiledMatter,
+        vehicle_type_id: 8,
+        total_weight_kg: weightKg,
+        points: [
+          {
+            address: pickupAddress,
+            contact_person: { phone: normalizePhone(pickupPhone), name: config?.kitchen?.name || "Nepali Tales Kitchen" },
+          },
+          {
+            address: dropAddress,
+            contact_person: { phone: normalizePhone(dropPhone) || "919820000001", name: dropName || "Recipient" },
+          },
+        ],
+      },
+      deliveryMode,
+      schedule
+    );
 
     try {
       const res = await fetch("/api/borzo/calculate", {
@@ -220,47 +234,51 @@ export function CreateOrder({
     setBookingError(null);
     setCreatedOrder(null);
 
-    const payload = {
-      type: "standard",
-      matter: compiledMatter,
-      vehicle_type_id: 8,
-      total_weight_kg: weightKg,
-      payment_method: "cash",
-      points: [
-        {
-          address: pickupAddress,
-          contact_person: {
-            phone: normalizePhone(pickupPhone),
-            name: config?.kitchen?.name || "Nepali Tales Kitchen",
+    const payload = buildDeliveryModePayload(
+      {
+        type: "standard" as const,
+        matter: compiledMatter,
+        vehicle_type_id: 8,
+        total_weight_kg: weightKg,
+        payment_method: "cash",
+        points: [
+          {
+            address: pickupAddress,
+            contact_person: {
+              phone: normalizePhone(pickupPhone),
+              name: config?.kitchen?.name || "Nepali Tales Kitchen",
+            },
+            note: "Kitchen dispatch counter, Metropolis Aquaris Phase 2, Kasarvadavali, Thane West",
+            is_order_payment_here: paymentPayer === "kitchen",
           },
-          note: "Kitchen dispatch counter, Metropolis Aquaris Phase 2, Kasarvadavali, Thane West",
-          is_order_payment_here: paymentPayer === "kitchen",
-        },
-        {
-          address: dropAddress,
-          contact_person: {
-            phone: normalizePhone(dropPhone),
-            name: dropName,
+          {
+            address: dropAddress,
+            contact_person: {
+              phone: normalizePhone(dropPhone),
+              name: dropName,
+            },
+            client_order_id: clientOrderId,
+            note: [
+              apartmentNumber ? `Flat/Apt: ${apartmentNumber}` : "",
+              buildingNumber ? `Bldg: ${buildingNumber}` : "",
+              floorNumber ? `Floor: ${floorNumber}` : "",
+              dropNote,
+              paymentPayer === "customer"
+                ? `Collect ₹${calcResult?.payment_amount || ""} delivery fee cash from customer`
+                : "",
+            ]
+              .filter(Boolean)
+              .join(" | "),
+            apartment_number: apartmentNumber || null,
+            building_number: buildingNumber || null,
+            floor_number: floorNumber || null,
+            is_order_payment_here: paymentPayer === "customer",
           },
-          client_order_id: clientOrderId,
-          note: [
-            apartmentNumber ? `Flat/Apt: ${apartmentNumber}` : "",
-            buildingNumber ? `Bldg: ${buildingNumber}` : "",
-            floorNumber ? `Floor: ${floorNumber}` : "",
-            dropNote,
-            paymentPayer === "customer"
-              ? `Collect ₹${calcResult?.payment_amount || ""} delivery fee cash from customer`
-              : "",
-          ]
-            .filter(Boolean)
-            .join(" | "),
-          apartment_number: apartmentNumber || null,
-          building_number: buildingNumber || null,
-          floor_number: floorNumber || null,
-          is_order_payment_here: paymentPayer === "customer",
-        },
-      ],
-    };
+        ],
+      },
+      deliveryMode,
+      schedule
+    );
 
     try {
       const res = await fetch("/api/borzo/create", {
@@ -492,6 +510,24 @@ export function CreateOrder({
                 onChange={(e) => setDropNote(e.target.value)}
               />
             </div>
+
+            <div className="pt-1">
+              <DeliveryModeSelector
+                mode={deliveryMode}
+                onModeChange={(nextMode) => {
+                  setDeliveryMode(nextMode);
+                  setCalcResult(null);
+                  setCalcError(null);
+                }}
+                schedule={schedule}
+                onScheduleChange={(nextSchedule) => {
+                  setSchedule(nextSchedule);
+                  setCalcResult(null);
+                  setCalcError(null);
+                }}
+                idPrefix="create"
+              />
+            </div>
           </div>
         </Card>
 
@@ -509,7 +545,7 @@ export function CreateOrder({
                 )}
               </div>
               <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-zinc-300">
-                Motorbike &middot; Standard
+                Motorbike &middot; {getDeliveryModeLabel(deliveryMode)}
               </span>
             </div>
 
